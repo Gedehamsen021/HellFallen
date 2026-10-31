@@ -10,7 +10,7 @@ import { GEAR_SLOTS, STATS, RARITIES, GEAR_PERKS, EXOTIC_MAP } from '../../../sh
 import { DIFFICULTIES, MISSION_TYPES, RESEARCH, rankFor, xpForLevel } from '../../../shared/data/progression.js';
 import { planetStatus, missionTypesFor, missionFaction } from '../../../shared/galaxy.js';
 import { ARMOR_COLORS, VISOR_COLORS } from '../core/Profile.js';
-import { buildTrooper, buildWeapon } from '../game/models/units.js';
+import { buildTrooper, buildWeapon, gripPose, applyPose } from '../game/models/units.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TIPS = [
@@ -629,11 +629,8 @@ export class UI {
     const t = buildTrooper(this.game.profile.look());
     const w = buildWeapon(this.game.profile.data.loadout.primary);
     t.weaponMount.add(w);
-    t.armR.rotation.set(-1.45, 0, -0.12);
-    t.armL.rotation.set(-1.35, 0, 0.55);
-    t.foreR.rotation.x = -0.25;
-    t.foreL.rotation.x = -0.35;
-    t.aim.rotation.x = 0.35;
+    applyPose(t, gripPose(t, w));
+    t.aim.rotation.x = 0.3;
     scene.add(t.root);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.1, 24), new THREE.MeshStandardMaterial({ color: '#1a1e28', metalness: 0.6, roughness: 0.4 }));
     base.position.y = -0.05;

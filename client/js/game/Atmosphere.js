@@ -65,7 +65,7 @@ void main() {
 }`;
 
 export class Atmosphere {
-  constructor(scene, world, vis, quality = 'alta') {
+  constructor(scene, world, vis, quality = 'alta', renderer = null) {
     this.scene = scene;
     this.world = world;
     this.vis = vis;
@@ -105,6 +105,30 @@ export class Atmosphere {
     scene.add(this.sky);
     scene.background = new THREE.Color(fogCol);
 
+    // iluminação baseada em imagem: o próprio céu do planeta vira mapa de ambiente
+    if (renderer) {
+      try {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const envScene = new THREE.Scene();
+        const envMat = skyMat.clone();
+        envMat.uniforms.uStars.value = 0;
+        envMat.uniforms.uAurora.value = 0;
+        envMat.uniforms.uBottom.value = new THREE.Color(mix(vis.ground.mid, '#000000', 0.35));
+        if (world.biome === 'moon') {
+          envMat.uniforms.uTop.value = new THREE.Color('#8a90a8');
+          envMat.uniforms.uHorizon.value = new THREE.Color('#b0b8c8');
+        }
+        envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), envMat));
+        this.envRT = pmrem.fromScene(envScene, 0.035);
+        scene.environment = this.envRT.texture;
+        scene.environmentIntensity = world.biome === 'moon' ? 1.1 : tod.night ? 0.9 : 0.75;
+        pmrem.dispose();
+        envMat.dispose();
+      } catch (e) {
+        console.warn('IBL indisponível', e);
+      }
+    }
+
     // neblina
     const [fn, ff] = vis.fog;
     this.fog = new THREE.Fog(fogCol, fn, ff * tod.fogMul);
@@ -124,7 +148,7 @@ export class Atmosphere {
     scene.add(this.sun.target);
     const hemiSky = tod.night ? mix(horizon, '#3a5aa8', 0.5) : mix(horizon, top, 0.3);
     const hemiGround = mix(vis.ground.low, '#000000', 0.45);
-    this.hemi = new THREE.HemisphereLight(hemiSky, hemiGround, (vis.ambient || 0.6) * (tod.night ? 1.6 : 1.15));
+    this.hemi = new THREE.HemisphereLight(vis.hemiSky || hemiSky, hemiGround, (vis.ambient || 0.6) * (tod.night ? 1.2 : 0.75));
     scene.add(this.hemi);
     this.ambient = new THREE.AmbientLight(tod.night ? '#6a7ab8' : '#ffffff', tod.night ? 0.55 : 0.18);
     scene.add(this.ambient);

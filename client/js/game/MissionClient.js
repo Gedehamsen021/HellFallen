@@ -42,7 +42,7 @@ export class MissionClient {
     this.camera = new THREE.PerspectiveCamera(this.profile.data.settings.fov || 72, w / h, 0.1, 2600);
     this.scene.add(this.camera);
 
-    this.atmo = new Atmosphere(this.scene, world, this.vis, quality);
+    this.atmo = new Atmosphere(this.scene, world, this.vis, quality, this.renderer);
     this.scene.add(buildTerrain(world, this.vis));
     this.liquid = buildLiquid(world, this.vis);
     if (this.liquid) this.scene.add(this.liquid.mesh);
@@ -554,6 +554,7 @@ export class MissionClient {
     this.hud.dispose();
     this.enemies.dispose();
     this.audio.stopAllLoops();
+    if (this.atmo.envRT) this.atmo.envRT.dispose();
     this.scene.traverse((o) => {
       if (o.geometry && !o.geometry.userData?.shared) o.geometry.dispose();
     });

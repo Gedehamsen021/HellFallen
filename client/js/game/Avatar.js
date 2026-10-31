@@ -1,6 +1,6 @@
 // Avatar do soldado (local ou remoto) com animação procedural
 import * as THREE from 'three';
-import { buildTrooper, buildWeapon } from './models/units.js';
+import { buildTrooper, buildWeapon, gripPose, applyPose } from './models/units.js';
 import { WEAPON_LIST } from '../../../shared/data/weapons.js';
 
 export const ANIM = { MOVE: 1, SPRINT: 2, AIM: 4, FIRE: 8, RELOAD: 16, AIR: 32 };
@@ -32,6 +32,7 @@ export class Avatar {
     if (this.weapon) this.model.weaponMount.remove(this.weapon);
     this.weapon = id ? buildWeapon(id) : null;
     if (this.weapon) this.model.weaponMount.add(this.weapon);
+    this.ik = gripPose(this.model, this.weapon);
   }
 
   setWeaponIndex(i) {
@@ -95,17 +96,10 @@ export class Avatar {
       m.foreL.rotation.x = -0.6;
     } else {
       m.torso.rotation.x = -this.pitch * 0.25;
-      m.aim.rotation.x = -this.pitch * 0.75 - this.recoil * 0.15;
-      m.armR.rotation.set(-1.45, 0, -0.12);
-      m.armL.rotation.set(-1.35, 0, 0.55);
-      m.foreR.rotation.x = -0.25;
-      m.foreL.rotation.x = -0.35;
+      m.aim.rotation.x = -this.pitch * 0.75 - this.recoil * 0.15 + ((flags & ANIM.RELOAD) ? 0.35 : 0);
+      if (!this.ik) this.ik = gripPose(m, this.weapon);
+      applyPose(m, this.ik, !!(flags & ANIM.RELOAD));
       m.aim.position.z = -this.recoil * 0.08;
-    }
-    if (flags & ANIM.RELOAD) {
-      m.armL.rotation.set(-0.7, 0, 0.3);
-      m.foreL.rotation.x = -1.2;
-      m.aim.rotation.x = 0.3;
     }
     m.head.rotation.x = -this.pitch * 0.4;
     if (m.cape) {

@@ -317,8 +317,6 @@ export class Entities {
         const k = Math.min(1, o.t / o.d);
         const e = k * k;
         o.pod.position.lerpVectors(o.start, o.end, e);
-        o.pod.lookAt(o.start);
-        o.pod.rotateX(Math.PI / 2);
         o.pod.rotation.set(0, 0, 0);
         const p = o.pod.position;
         this.fx.add.emit(p.x, p.y + 4, p.z, (Math.random() - 0.5) * 2, 6, (Math.random() - 0.5) * 2, new THREE.Color('#ffb070').multiplyScalar(2.2), 1.6, 0.3, 0.3, 0, 0, 1);
@@ -329,10 +327,13 @@ export class Entities {
           o.pod.position.y = o.end.y - 0.6;
         }
       } else {
-        if (o.t > o.d + 14) {
+        const stay = o.k === 'player' ? 1.2 : 14;
+        if (o.t > o.d + stay) {
           o.sink += dt;
-          o.pod.position.y -= dt * 0.5;
-          if (o.sink > 6) { this.scene.remove(o.pod); this.pods.splice(i, 1); }
+          const speed = o.k === 'player' ? 2.6 : 0.5;
+          o.pod.position.y -= dt * speed;
+          if (o.k === 'player' && Math.random() < 0.5) this.fx.norm.emit(o.end.x + (Math.random() - 0.5) * 2, o.end.y + 0.2, o.end.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2, new THREE.Color('#a89a88'), 0.8, 2, 1, 0, 1, 0.35);
+          if (o.sink > (o.k === 'player' ? 1.8 : 6)) { this.scene.remove(o.pod); this.pods.splice(i, 1); }
         }
       }
     }

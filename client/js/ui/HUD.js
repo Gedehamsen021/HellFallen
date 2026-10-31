@@ -191,9 +191,14 @@ export class HUD {
     this.$.objectives.innerHTML = html;
   }
 
+  put(el, html) {
+    if (el._v !== html) { el.innerHTML = html; el._v = html; }
+  }
+
   update(dt, s) {
     const p = s.player;
     const $ = this.$;
+    const put = (el, html) => this.put(el, html);
     // marcadores de acerto / dano
     if (this.hitT > 0) { this.hitT -= dt; if (this.hitT <= 0) $.hit.classList.remove('show'); }
     this.vigT = Math.max(0, this.vigT - dt * 1.5);
@@ -202,33 +207,33 @@ export class HUD {
 
     // vida / estamina
     const hpk = Math.max(0, p.hp / p.maxHp);
-    $.hpVal.textContent = Math.ceil(Math.max(0, p.hp));
+    put($.hpVal, Math.ceil(Math.max(0, p.hp)));
     $.hpFill.style.transform = `scaleX(${hpk})`;
     $.hpGhost.style.transform = `scaleX(${hpk})`;
     $.stam.style.transform = `scaleX(${p.stamina / p.maxStamina})`;
     $.lowhp.classList.toggle('hidden', !(p.alive && hpk < 0.3));
-    $.stim.innerHTML = `✚ ${p.stims}`;
-    $.nade.innerHTML = `● ${p.grenades} <span class="dim" style="font-size:12px">${GRENADES[p.grenadeType]?.name.replace('Granada ', '') || ''}</span>`;
+    put($.stim, `✚ ${p.stims}`);
+    put($.nade, `● ${p.grenades} <span class="dim" style="font-size:12px">${GRENADES[p.grenadeType]?.name.replace('Granada ', '') || ''}</span>`);
 
     // arma
     const w = p.weapon;
     if (w) {
       const W = w.W;
-      $.wname.textContent = W.name + (p.reloadT > 0 ? ' — RECARREGANDO' : '');
+      put($.wname, W.name + (p.reloadT > 0 ? ' — RECARREGANDO' : ''));
       if (W.energy) {
-        $.mag.textContent = w.overheated ? 'QUENTE' : '∞';
-        $.res.textContent = '';
+        put($.mag, w.overheated ? 'QUENTE' : '∞');
+        put($.res, '');
         $.heat.classList.remove('hidden');
         $.heatFill.style.transform = `scaleX(${w.heat / 100})`;
         $.ammo.classList.toggle('low', w.overheated);
       } else if (W.type === 'flame') {
-        $.mag.textContent = Math.ceil(w.mag) + '%';
-        $.res.textContent = `/ ${w.mags}`;
+        put($.mag, Math.ceil(w.mag) + '%');
+        put($.res, `/ ${w.mags}`);
         $.heat.classList.add('hidden');
         $.ammo.classList.toggle('low', w.mag < 20);
       } else {
-        $.mag.textContent = w.mag;
-        $.res.textContent = `/ ${w.mags}`;
+        put($.mag, w.mag);
+        put($.res, `/ ${w.mags}`);
         $.heat.classList.toggle('hidden', W.type !== 'rail');
         if (W.type === 'rail') $.heatFill.style.transform = `scaleX(${Math.min(1, w.charge / W.charge)})`;
         $.ammo.classList.toggle('low', w.mag <= Math.ceil(W.mag * 0.25));
@@ -252,15 +257,15 @@ export class HUD {
       const e = this.callinEls[i];
       const k = c.cd / c.max;
       e.cd.style.height = `${k * 100}%`;
-      e.cdt.textContent = c.cd > 0 ? Math.ceil(c.cd) + 's' : '';
+      this.put(e.cdt, c.cd > 0 ? Math.ceil(c.cd) + 's' : '');
       e.el.classList.toggle('ready', c.cd <= 0 && !s.noSupport);
       e.el.style.opacity = s.noSupport ? 0.35 : 1;
     }
 
     // status
-    $.reinf.innerHTML = `⇣ Reforços: <b>${s.reinforcements}</b>`;
-    $.samples.innerHTML = `◈ <b>${s.mySamples}</b>`;
-    $.timer.textContent = s.timeLeft !== null ? `${s.noSupport ? 'SEM SUPORTE ORBITAL' : 'Suporte orbital: ' + fmtTime(s.timeLeft)}` : '';
+    put($.reinf, `⇣ Reforços: <b>${s.reinforcements}</b>`);
+    put($.samples, `◈ <b>${s.mySamples}</b>`);
+    put($.timer, s.timeLeft !== null ? `${s.noSupport ? 'SEM SUPORTE ORBITAL' : 'Suporte orbital: ' + fmtTime(s.timeLeft)}` : '');
     $.timer.classList.toggle('warn', s.timeLeft !== null && s.timeLeft < 120);
 
     // esquadrão
@@ -269,7 +274,7 @@ export class HUD {
 
     // morte
     if (this.dead) {
-      $.deathSub.textContent = s.reinforcements > 0 && !s.noSupport ? `Reforço chegando em breve… (${s.reinforcements} restantes)` : 'Sem reforços. Torça pelos seus companheiros.';
+      put($.deathSub, s.reinforcements > 0 && !s.noSupport ? `Reforço chegando em breve… (${s.reinforcements} restantes)` : 'Sem reforços. Torça pelos seus companheiros.');
     }
 
     // extração
@@ -280,13 +285,13 @@ export class HUD {
     else if (ex[0] === 'landing') exText = 'NAVE POUSANDO…';
     else if (ex[0] === 'boarding') exText = 'EMBARQUEM NA NAVE!';
     else if (ex[0] === 'departing') exText = 'DECOLANDO';
-    $.extract.textContent = exText;
+    put($.extract, exText);
     $.extract.classList.toggle('hidden', !exText);
 
     // chefe
     if (s.boss) {
       $.boss.classList.remove('hidden');
-      $.bossName.textContent = s.boss.def.name.toUpperCase();
+      put($.bossName, s.boss.def.name.toUpperCase());
       $.bossFill.style.width = `${s.boss.hp * 100}%`;
     } else $.boss.classList.add('hidden');
 

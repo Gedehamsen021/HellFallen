@@ -1,6 +1,7 @@
 // Kit de modelagem low poly: materiais em cache, geometrias coloridas e utilidades
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 
 const _c = new THREE.Color();
 const _m = new THREE.Matrix4();
@@ -105,9 +106,51 @@ export function merge(list) {
   return g;
 }
 
+// ---------- formas facetadas (low poly de verdade, sem caixas cruas) ----------
+const shapeCache = new Map();
+const r3 = (v) => Math.round(v * 1000) / 1000;
+function cachedShape(key, fn) {
+  let g = shapeCache.get(key);
+  if (!g) { g = fn(); g.computeBoundingSphere(); shapeCache.set(key, g); }
+  return g;
+}
+// Bloco chanfrado e afunilado: base (wb x db) embaixo, topo (wt x dt) em cima, altura h, chanfro b
+export function taperGeo(wb, db, wt, dt, h, b = null) {
+  const key = `t${r3(wb)}|${r3(db)}|${r3(wt)}|${r3(dt)}|${r3(h)}|${b === null ? 'a' : r3(b)}`;
+  return cachedShape(key, () => {
+    const bb = b === null ? Math.min(wb, db, wt, dt, h) * 0.22 : b;
+    const pts = [];
+    for (const sy of [-1, 1]) {
+      const w = (sy < 0 ? wb : wt) / 2, d = (sy < 0 ? db : dt) / 2, y = h / 2;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        pts.push(new THREE.Vector3(sx * w, sy * (y - bb), sz * (d - bb)));
+        pts.push(new THREE.Vector3(sx * (w - bb), sy * y, sz * (d - bb)));
+        pts.push(new THREE.Vector3(sx * (w - bb), sy * (y - bb), sz * d));
+      }
+    }
+    return new ConvexGeometry(pts);
+  });
+}
+export const boxGeo = (w, h, d, b = null) => taperGeo(w, d, w, d, h, b);
+// Cilindro afunilado facetado
+export function cylGeo(rt, rb, h, seg = 6, open = false, ts = 0, tl = Math.PI * 2) {
+  const key = `c${r3(rt)}|${r3(rb)}|${r3(h)}|${seg}|${open}|${r3(ts)}|${r3(tl)}`;
+  return cachedShape(key, () => new THREE.CylinderGeometry(rt, rb, h, seg, 1, open, ts, tl));
+}
+// Esfera low poly (gomos) — capacetes, ombreiras, cúpulas
+export function sphereGeo(r, ws = 8, hs = 6, ps = 0, pl = Math.PI) {
+  const key = `s${r3(r)}|${ws}|${hs}|${r3(ps)}|${r3(pl)}`;
+  return cachedShape(key, () => new THREE.SphereGeometry(r, ws, hs, 0, Math.PI * 2, ps, pl));
+}
+// Casco convexo de pontos arbitrários
+export function hullGeo(key, points) {
+  return cachedShape('h' + key, () => new ConvexGeometry(points.map((p) => new THREE.Vector3(...p))));
+}
+
 // Atalhos de geometria colorida (para mesclar)
 export const G = {
-  box: (w, h, d, color, t = {}, k = 1) => paint(xf(new THREE.BoxGeometry(w, h, d), t), color, k),
+  box: (w, h, d, color, t = {}, k = 1) => paint(xf(boxGeo(w, h, d).clone(), t), color, k),
+  taper: (wb, db, wt, dt, h, color, t = {}, k = 1) => paint(xf(taperGeo(wb, db, wt, dt, h).clone(), t), color, k),
   cyl: (rt, rb, h, seg, color, t = {}, k = 1) => paint(xf(new THREE.CylinderGeometry(rt, rb, h, seg), t), color, k),
   cone: (r, h, seg, color, t = {}, k = 1) => paint(xf(new THREE.ConeGeometry(r, h, seg), t), color, k),
   ico: (r, d, color, t = {}, k = 1) => paint(xf(new THREE.IcosahedronGeometry(r, d), t), color, k),
@@ -141,7 +184,27 @@ export const unitIco = (d = 0) => cachedGeo('ico' + d, () => new THREE.Icosahedr
 export const unitOct = () => cachedGeo('oct', () => new THREE.OctahedronGeometry(0.5, 0));
 
 export function B(w, h, d, material, t = {}) {
-  return mesh(unitBox(), material, { ...t, sx: w, sy: h, sz: d });
+  return mesh(boxGeo(w, h, d), material, { ...t, sx: t.sx || 1, sy: t.sy || 1, sz: t.sz || 1 });
+}
+// Bloco afunilado (base -> topo)
+export function T(wb, db, wt, dt, h, material, t = {}) {
+  return mesh(taperGeo(wb, db, wt, dt, h, t.b ?? null), material, t);
+}
+// Cilindro afunilado
+export function Cy(rt, rb, h, material, t = {}, seg = 6) {
+  return mesh(cylGeo(rt, rb, h, seg), material, t);
+}
+// Esfera em gomos
+export function Sp(r, material, t = {}, ws = 8, hs = 6) {
+  return mesh(sphereGeo(r, ws, hs), material, t);
+}
+// Domo (meia esfera)
+export function Dome(r, material, t = {}, ws = 8, hs = 3) {
+  return mesh(sphereGeo(r, ws, hs, 0, Math.PI / 2), material, t);
+}
+// Faixa curva (visor envolvente)
+export function Band(r, h, arc, material, t = {}, seg = 10) {
+  return mesh(cylGeo(r, r, h, seg, true, -arc / 2, arc), material, t);
 }
 export function C(r, h, material, t = {}, seg = 6) {
   return mesh(unitCyl(seg), material, { ...t, sx: r * 2, sy: h, sz: r * 2 });
@@ -167,4 +230,37 @@ export function darken(hex, f) {
 export function mix(a, b, t) {
   const c1 = new THREE.Color(a), c2 = new THREE.Color(b);
   return '#' + c1.lerp(c2, t).getHexString();
+}
+
+// Mescla, dentro de cada nó, os filhos Mesh que usam o mesmo material (menos draw calls)
+export function consolidate(root) {
+  const nodes = [];
+  root.traverse((o) => { if (o.children.length > 1) nodes.push(o); });
+  for (const node of nodes) {
+    const groups = new Map();
+    for (const c of node.children) {
+      if (!c.isMesh || c.children.length || c.userData.keep) continue;
+      if (!groups.has(c.material)) groups.set(c.material, []);
+      groups.get(c.material).push(c);
+    }
+    for (const [mat, list] of groups) {
+      if (list.length < 2) continue;
+      const geos = list.map((m) => {
+        m.updateMatrix();
+        let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+        for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+        if (!g.attributes.normal) g.computeVertexNormals();
+        g.applyMatrix4(m.matrix);
+        return g;
+      });
+      const merged = mergeGeometries(geos, false);
+      if (!merged) continue;
+      merged.computeBoundingSphere();
+      const mesh = new THREE.Mesh(merged, mat);
+      mesh.castShadow = list.some((m) => m.castShadow);
+      for (const m of list) node.remove(m);
+      node.add(mesh);
+    }
+  }
+  return root;
 }

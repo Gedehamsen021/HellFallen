@@ -1,167 +1,190 @@
 // Modelos animados: soldado (Caído), armas e inimigos das 3 facções
 import * as THREE from 'three';
 import { WEAPONS } from '../../../../shared/data/weapons.js';
-import { stdMat, glowMat, B, C, K, S, O, pivot, darken, merge, G, paint, xf, jitter } from './kit.js';
+import { stdMat, glowMat, B, C, K, S, O, T, Cy, Sp, Dome, Band, pivot, darken, merge, G, paint, xf, jitter, consolidate } from './kit.js';
 
 // =====================================================================
 // SOLDADO
 // =====================================================================
 export function buildTrooper(look = {}) {
-  const c1 = look.c1 || '#2b2f3a';
+  const c1 = look.c1 || '#4a4a52';
   const c2 = look.c2 || '#d4a017';
   const visor = look.visor || '#ffb000';
-  const m1 = stdMat(c1, { rough: 0.55, metal: 0.35 });
-  const m1d = stdMat(darken(c1, 0.75), { rough: 0.6, metal: 0.3 });
-  const m2 = stdMat(c2, { rough: 0.45, metal: 0.5 });
-  const md = stdMat('#17191f', { rough: 0.8 });
+  const m1 = stdMat(c1, { rough: 0.6, metal: 0.2 });
+  const m1d = stdMat(darken(c1, 0.7), { rough: 0.7, metal: 0.15 });
+  const m2 = stdMat(c2, { rough: 0.45, metal: 0.45 });
+  const md = stdMat('#1d1f25', { rough: 0.85 });
   const mv = glowMat(visor, 1.8);
   const gold = stdMat('#e0b040', { rough: 0.3, metal: 0.8 });
   const exo = glowMat('#ffc63a', 2);
+  const bone = stdMat('#d8d0c0', { rough: 0.6 });
 
   const root = new THREE.Group();
   const body = pivot(0, 0, 0);
   root.add(body);
+
+  // ---------------- quadril
   const hips = pivot(0, 0.95, 0);
   body.add(hips);
-  hips.add(B(0.36, 0.18, 0.22, m1));
-  hips.add(B(0.12, 0.14, 0.06, m2, { z: 0.12, y: -0.04 }));
+  hips.add(T(0.25, 0.18, 0.32, 0.22, 0.17, m1d, { y: -0.02 }));
+  hips.add(T(0.1, 0.05, 0.14, 0.06, 0.14, m2, { y: -0.06, z: 0.115 }));
+  for (const side of [-1, 1]) hips.add(T(0.06, 0.15, 0.08, 0.18, 0.16, m1, { x: side * 0.175, y: -0.05, rz: side * 0.18 }));
 
+  // ---------------- pernas
   const legsV = look.legs || 0;
   const mkLeg = (side) => {
-    const leg = pivot(side * 0.11, -0.03, 0);
+    const leg = pivot(side * 0.105, -0.05, 0);
     hips.add(leg);
-    leg.add(B(0.16, 0.44, 0.18, m1, { y: -0.22 }));
-    leg.add(B(0.05, 0.3, 0.1, md, { x: side * 0.08, y: -0.2 }));
-    const shin = pivot(0, -0.45, 0);
+    leg.add(Cy(0.095, 0.07, 0.42, m1d, { y: -0.21 }, 7));
+    leg.add(T(0.125, 0.065, 0.155, 0.08, 0.27, m1, { y: -0.17, z: 0.055, rx: -0.04 }));
+    if (legsV === 1) leg.add(T(0.06, 0.14, 0.07, 0.17, 0.25, m2, { x: side * 0.075, y: -0.18 }));
+    const shin = pivot(0, -0.43, 0);
     leg.add(shin);
-    shin.add(B(0.15, 0.4, 0.17, m1, { y: -0.2 }));
-    shin.add(B(0.17, 0.12, 0.08, m2, { y: 0.0, z: 0.08 }));
-    shin.add(B(0.18, 0.12, 0.28, md, { y: -0.44, z: 0.04 }));
-    if (legsV === 1) shin.add(B(0.18, 0.28, 0.06, m2, { y: -0.2, z: 0.1 }));
-    if (legsV === 2) shin.add(B(0.02, 0.3, 0.02, mv, { x: side * 0.08, y: -0.2, z: 0.06 }));
-    if (legsV === 3) { shin.add(B(0.19, 0.03, 0.29, exo, { y: -0.505, z: 0.04 })); shin.add(B(0.02, 0.32, 0.02, exo, { x: side * 0.085, y: -0.22 })); }
+    shin.add(S(0.072, m2, { z: 0.05, sz: 0.75 }));
+    shin.add(Cy(0.072, 0.054, 0.37, m1d, { y: -0.2 }, 7));
+    shin.add(T(0.115, 0.07, 0.135, 0.085, 0.28, legsV === 1 ? m2 : m1, { y: -0.19, z: 0.035 }));
+    shin.add(T(0.13, 0.28, 0.11, 0.17, 0.12, md, { y: -0.42, z: 0.045 }));
+    shin.add(T(0.1, 0.07, 0.09, 0.05, 0.06, m1, { y: -0.39, z: 0.13, rx: 0.5 }));
+    if (legsV === 2) shin.add(B(0.018, 0.26, 0.018, mv, { x: side * 0.06, y: -0.2, z: 0.07 }));
+    if (legsV === 3) {
+      shin.add(T(0.135, 0.285, 0.13, 0.28, 0.025, exo, { y: -0.485, z: 0.045 }));
+      shin.add(B(0.02, 0.3, 0.02, exo, { x: side * 0.075, y: -0.21 }));
+    }
     return { leg, shin };
   };
   const L = mkLeg(-1), R = mkLeg(1);
 
-  const torso = pivot(0, 1.02, 0);
+  // ---------------- tronco
+  const torso = pivot(0, 1.0, 0);
   body.add(torso);
-  torso.add(B(0.44, 0.4, 0.27, m1, { y: 0.24 }));
-  torso.add(B(0.36, 0.14, 0.22, m1d, { y: 0.06 }));
-  torso.add(B(0.4, 0.07, 0.25, md, { y: 0.0 }));
+  torso.add(Cy(0.15, 0.165, 0.15, m1d, { y: 0.07 }, 8));
+  torso.add(Cy(0.172, 0.172, 0.055, md, { y: 0.0 }, 8));
+  for (const i of [-1, 1]) torso.add(B(0.075, 0.075, 0.055, md, { x: i * 0.1, y: -0.005, z: 0.165 }));
+  torso.add(T(0.34, 0.21, 0.48, 0.28, 0.3, m1, { y: 0.28 }));
+  torso.add(Cy(0.1, 0.135, 0.06, m1d, { y: 0.455 }, 8));
   const chestV = look.chest || 0;
   if (chestV === 0) {
-    torso.add(B(0.4, 0.26, 0.06, m2, { y: 0.3, z: 0.15 }));
-    torso.add(B(0.14, 0.08, 0.04, md, { y: 0.32, z: 0.185 }));
+    torso.add(T(0.28, 0.05, 0.38, 0.06, 0.22, m2, { y: 0.3, z: 0.125, rx: 0.12 }));
+    torso.add(T(0.1, 0.03, 0.12, 0.035, 0.07, md, { y: 0.33, z: 0.165, rx: 0.12 }));
   } else if (chestV === 1) {
-    torso.add(B(0.38, 0.22, 0.05, m1d, { y: 0.3, z: 0.15 }));
-    for (let i = -1; i <= 1; i++) torso.add(B(0.1, 0.1, 0.07, m2, { x: i * 0.12, y: 0.12, z: 0.16 }));
-    torso.add(B(0.06, 0.4, 0.04, m2, { x: 0.1, y: 0.25, z: 0.15, rz: 0.5 }));
+    torso.add(T(0.3, 0.05, 0.36, 0.06, 0.2, m1d, { y: 0.3, z: 0.125, rx: 0.12 }));
+    for (let i = -1; i <= 1; i++) torso.add(B(0.085, 0.09, 0.06, m2, { x: i * 0.105, y: 0.17, z: 0.15 }));
+    torso.add(B(0.05, 0.42, 0.03, m2, { x: 0.08, y: 0.27, z: 0.15, rz: 0.5 }));
   } else if (chestV === 2) {
-    torso.add(B(0.46, 0.32, 0.08, m2, { y: 0.28, z: 0.15 }));
-    torso.add(B(0.5, 0.1, 0.32, m2, { y: 0.46 }));
-    torso.add(B(0.08, 0.08, 0.04, mv, { y: 0.3, z: 0.2 }));
+    torso.add(T(0.32, 0.06, 0.44, 0.08, 0.26, m2, { y: 0.29, z: 0.125, rx: 0.1 }));
+    torso.add(T(0.42, 0.3, 0.5, 0.32, 0.08, m2, { y: 0.45 }));
+    torso.add(Cy(0.04, 0.04, 0.03, mv, { y: 0.3, z: 0.17, rx: Math.PI / 2 }, 8));
   } else if (chestV === 3) {
-    torso.add(B(0.4, 0.28, 0.06, m2, { y: 0.29, z: 0.15 }));
-    torso.add(C(0.08, 0.05, exo, { y: 0.3, z: 0.19, rx: Math.PI / 2 }, 8));
+    torso.add(T(0.28, 0.05, 0.38, 0.06, 0.22, m2, { y: 0.3, z: 0.125, rx: 0.12 }));
+    torso.add(Cy(0.075, 0.075, 0.05, exo, { y: 0.31, z: 0.165, rx: Math.PI / 2 + 0.12 }, 8));
   } else if (chestV === 4) {
-    torso.add(B(0.48, 0.34, 0.09, gold, { y: 0.28, z: 0.15 }));
-    torso.add(B(0.54, 0.12, 0.34, gold, { y: 0.46 }));
-    torso.add(B(0.1, 0.1, 0.04, exo, { y: 0.3, z: 0.2 }));
+    torso.add(T(0.34, 0.07, 0.46, 0.09, 0.27, gold, { y: 0.29, z: 0.125, rx: 0.1 }));
+    torso.add(T(0.44, 0.3, 0.52, 0.32, 0.09, gold, { y: 0.45 }));
+    torso.add(Cy(0.05, 0.05, 0.04, exo, { y: 0.3, z: 0.18, rx: Math.PI / 2 }, 8));
   }
   // mochila
-  torso.add(B(0.32, 0.36, 0.16, m1d, { y: 0.27, z: -0.21 }));
-  torso.add(B(0.26, 0.1, 0.06, m2, { y: 0.38, z: -0.3 }));
-  torso.add(C(0.012, 0.5, md, { x: 0.11, y: 0.62, z: -0.25 }, 4));
-  torso.add(S(0.025, glowMat('#4cff8a', 2.5), { x: 0.11, y: 0.88, z: -0.25 }));
+  torso.add(T(0.28, 0.13, 0.3, 0.15, 0.34, m1d, { y: 0.27, z: -0.2 }));
+  for (const i of [-1, 1]) {
+    torso.add(Cy(0.045, 0.045, 0.27, m2, { x: i * 0.125, y: 0.25, z: -0.26 }, 8));
+    torso.add(Cy(0.03, 0.045, 0.03, md, { x: i * 0.125, y: 0.4, z: -0.26 }, 8));
+  }
+  torso.add(Cy(0.008, 0.012, 0.5, md, { x: 0.1, y: 0.62, z: -0.24 }, 4));
+  torso.add(S(0.022, glowMat('#4cff8a', 2.5), { x: 0.1, y: 0.88, z: -0.24 }));
 
-  // cabeça
-  const head = pivot(0, 0.5, 0);
+  // ---------------- capacete
+  const head = pivot(0, 0.49, 0);
   torso.add(head);
-  head.add(B(0.1, 0.06, 0.1, md, { y: 0.0 }));
+  head.add(Cy(0.055, 0.065, 0.08, md, { y: 0.02 }, 6));
   const hv = look.helmet || 0;
+  const dome = (mat, t = {}) => head.add(Sp(0.165, mat, { y: 0.15, sx: 0.95, sz: 1.08, ...t }, 8, 6));
   if (hv === 0) {
-    head.add(S(0.17, m1, { y: 0.14, sx: 0.95, sy: 1.0, sz: 1.08 }, 1));
-    head.add(B(0.22, 0.065, 0.06, mv, { y: 0.15, z: 0.145 }));
-    head.add(B(0.05, 0.1, 0.1, m2, { x: 0.165, y: 0.12 }));
-    head.add(B(0.05, 0.1, 0.1, m2, { x: -0.165, y: 0.12 }));
+    dome(m1);
+    head.add(Band(0.169, 0.065, 2.0, mv, { y: 0.155, sx: 0.95, sz: 1.08 }, 10));
+    head.add(T(0.12, 0.06, 0.16, 0.1, 0.07, m1d, { y: 0.04, z: 0.1, rx: 0.3 }));
+    for (const i of [-1, 1]) head.add(Cy(0.052, 0.052, 0.04, m2, { x: i * 0.158, y: 0.13, rz: Math.PI / 2 }, 8));
+    head.add(T(0.035, 0.2, 0.025, 0.15, 0.04, m2, { y: 0.31 }));
   } else if (hv === 1) {
-    head.add(B(0.3, 0.28, 0.32, m1, { y: 0.14 }));
-    head.add(B(0.07, 0.07, 0.32, m2, { y: 0.3 }));
-    head.add(B(0.24, 0.05, 0.04, mv, { y: 0.17, z: 0.165 }));
-    head.add(B(0.05, 0.12, 0.04, mv, { y: 0.1, z: 0.165 }));
+    head.add(T(0.3, 0.32, 0.25, 0.27, 0.27, m1, { y: 0.15 }));
+    head.add(T(0.05, 0.3, 0.03, 0.22, 0.06, m2, { y: 0.31 }));
+    head.add(B(0.21, 0.042, 0.03, mv, { y: 0.17, z: 0.157 }));
+    head.add(B(0.042, 0.11, 0.03, mv, { y: 0.115, z: 0.157 }));
+    for (const i of [-1, 1]) head.add(T(0.05, 0.16, 0.04, 0.12, 0.16, m2, { x: i * 0.15, y: 0.1, rz: i * 0.1 }));
   } else if (hv === 2) {
-    head.add(S(0.18, m1, { y: 0.14, sz: 1.1 }, 1));
-    head.add(B(0.3, 0.08, 0.16, mv, { y: 0.15, z: 0.08 }));
-    head.add(B(0.1, 0.18, 0.1, m2, { y: 0.24, z: -0.08, rx: -0.4 }));
+    dome(m1);
+    head.add(Band(0.17, 0.1, 2.7, mv, { y: 0.15, sx: 0.95, sz: 1.08 }, 12));
+    head.add(T(0.03, 0.18, 0.02, 0.1, 0.16, m2, { y: 0.26, z: -0.1, rx: -0.5 }));
   } else if (hv === 3) {
-    head.add(S(0.17, md, { y: 0.14 }, 1));
-    head.add(B(0.24, 0.2, 0.05, stdMat('#d8d0c0', { rough: 0.6 }), { y: 0.12, z: 0.14 }));
-    head.add(B(0.06, 0.025, 0.02, mv, { x: 0.05, y: 0.15, z: 0.17 }));
-    head.add(B(0.06, 0.025, 0.02, mv, { x: -0.05, y: 0.15, z: 0.17 }));
-    head.add(K(0.24, 0.42, m2, { y: 0.24, z: -0.03, rx: -0.2 }, 5));
+    dome(md);
+    head.add(T(0.19, 0.05, 0.23, 0.06, 0.2, bone, { y: 0.13, z: 0.13, rx: -0.08 }));
+    for (const i of [-1, 1]) head.add(B(0.055, 0.022, 0.02, mv, { x: i * 0.048, y: 0.16, z: 0.165 }));
+    head.add(K(0.24, 0.42, m2, { y: 0.24, z: -0.03, rx: -0.2 }, 6));
   } else if (hv === 4) {
-    head.add(S(0.18, m1, { y: 0.14 }, 1));
-    head.add(S(0.075, exo, { y: 0.15, z: 0.16 }));
-    head.add(B(0.02, 0.22, 0.14, gold, { x: 0.18, y: 0.2, rz: -0.3 }));
-    head.add(B(0.02, 0.22, 0.14, gold, { x: -0.18, y: 0.2, rz: 0.3 }));
-    head.add(B(0.02, 0.16, 0.2, gold, { y: 0.33 }));
+    dome(m1);
+    head.add(Cy(0.075, 0.075, 0.04, exo, { y: 0.15, z: 0.16, rx: Math.PI / 2 }, 10));
+    head.add(Cy(0.09, 0.09, 0.03, gold, { y: 0.15, z: 0.145, rx: Math.PI / 2 }, 10));
+    for (const i of [-1, 1]) head.add(T(0.015, 0.16, 0.01, 0.1, 0.22, gold, { x: i * 0.17, y: 0.2, rz: -i * 0.3 }));
+    head.add(T(0.015, 0.22, 0.01, 0.12, 0.14, gold, { y: 0.33 }));
   } else {
-    head.add(B(0.3, 0.26, 0.3, m1, { y: 0.14 }));
-    head.add(B(0.26, 0.05, 0.04, exo, { y: 0.16, z: 0.155 }));
-    for (let i = 0; i < 5; i++) head.add(K(0.03, 0.18, exo, { x: (i - 2) * 0.06, y: 0.36 - Math.abs(i - 2) * 0.03, z: 0.1 }, 4));
+    dome(m1);
+    head.add(Band(0.169, 0.05, 2.0, exo, { y: 0.16, sx: 0.95, sz: 1.08 }, 10));
+    for (let i = 0; i < 5; i++) head.add(K(0.028, 0.17, exo, { x: (i - 2) * 0.06, y: 0.34 - Math.abs(i - 2) * 0.03, z: 0.07 }, 4));
   }
 
-  // braços + arma (pivô de mira)
+  // ---------------- braços + arma (pivô de mira)
   const aim = pivot(0, 0.38, 0);
   torso.add(aim);
   const armsV = look.arms || 0;
   const mkArm = (side) => {
     const arm = pivot(side * 0.29, 0, 0);
     aim.add(arm);
-    const pad = armsV === 1 ? [0.24, 0.14, 0.24] : armsV === 2 ? [0.15, 0.08, 0.17] : [0.19, 0.11, 0.21];
-    arm.add(B(pad[0], pad[1], pad[2], m2, { y: 0.03, x: side * 0.02 }));
-    arm.add(B(0.12, 0.3, 0.13, m1, { y: -0.15 }));
+    const padR = armsV === 1 ? 0.155 : armsV === 2 ? 0.105 : 0.13;
+    arm.add(Sp(padR, m2, { x: side * 0.03, y: 0.0, sy: 0.62, sz: 1.08, rz: -side * 0.38 }, 7, 4));
+    if (armsV === 1) arm.add(Sp(padR * 0.78, m1, { x: side * 0.07, y: -0.07, sy: 0.55, rz: -side * 0.6 }, 7, 4));
+    arm.add(Cy(0.058, 0.047, 0.28, m1d, { y: -0.15 }, 6));
     const fore = pivot(0, -0.3, 0);
     arm.add(fore);
-    fore.add(B(armsV === 1 ? 0.15 : 0.12, 0.28, armsV === 1 ? 0.16 : 0.13, m2, { y: -0.14 }));
-    fore.add(B(0.09, 0.09, 0.1, md, { y: -0.3 }));
-    if (armsV === 2) fore.add(B(0.02, 0.22, 0.02, mv, { y: -0.14, z: 0.07 }));
-    if (armsV === 3) fore.add(S(0.055, exo, { y: -0.2, z: 0.07 }));
-    if (armsV === 4) for (let i = -1; i <= 1; i++) fore.add(K(0.015, 0.12, glowMat('#ff3b3b', 2), { x: i * 0.03, y: -0.38, z: 0.04, rx: Math.PI }, 3));
+    fore.add(S(0.05, md, {}));
+    const g0 = armsV === 1 ? 0.06 : 0.05, g1 = armsV === 1 ? 0.082 : 0.066;
+    fore.add(Cy(g0, g1, 0.24, m2, { y: -0.15 }, 7));
+    fore.add(Sp(0.046, md, { y: -0.31, sy: 1.15 }, 6, 4));
+    if (armsV === 2) fore.add(B(0.016, 0.2, 0.016, mv, { y: -0.15, z: 0.065 }));
+    if (armsV === 3) fore.add(S(0.05, exo, { y: -0.2, z: 0.06 }));
+    if (armsV === 4) for (let i = -1; i <= 1; i++) fore.add(K(0.014, 0.12, glowMat('#ff3b3b', 2), { x: i * 0.028, y: -0.37, z: 0.035, rx: Math.PI }, 3));
     return { arm, fore };
   };
   const AL = mkArm(-1), AR = mkArm(1);
-  const weaponMount = pivot(0.24, -0.04, 0.32);
-  weaponMount.scale.setScalar(1.3);
+  const weaponMount = pivot(0.1, -0.1, 0.14);
+  weaponMount.scale.setScalar(1.15);
   aim.add(weaponMount);
 
-  // insígnia (capa / estandarte / faixa)
+  // ---------------- insígnia (capa / estandarte / faixa)
   const markV = look.mark || 0;
   let cape = null;
   if (markV === 0 || markV === 3) {
-    cape = pivot(0, 0.44, -0.3);
+    cape = pivot(0, 0.44, -0.29);
     torso.add(cape);
-    const capeMat = stdMat(markV === 3 ? '#3a1010' : darken(c1, 0.8), { rough: 0.9, side: THREE.DoubleSide });
-    cape.add(B(0.34, 0.78, 0.025, capeMat, { y: -0.39 }));
+    const capeMat = stdMat(markV === 3 ? '#3a1010' : darken(c1, 0.8), { rough: 0.9 });
+    cape.add(T(0.4, 0.024, 0.3, 0.024, 0.78, capeMat, { y: -0.39 }));
+    cape.add(T(0.31, 0.03, 0.3, 0.03, 0.06, m2, { y: -0.02 }));
     if (markV === 3) {
-      cape.add(B(0.34, 0.03, 0.03, exo, { y: -0.78 }));
+      cape.add(B(0.4, 0.03, 0.03, exo, { y: -0.78 }));
       cape.add(O(0.06, exo, { y: -0.4, z: -0.02, sy: 1.4 }));
     } else {
-      cape.add(B(0.1, 0.1, 0.03, m2, { y: -0.35, z: -0.01 }));
+      cape.add(O(0.055, m2, { y: -0.33, z: -0.015, sy: 1.3 }));
     }
   } else if (markV === 1) {
     const pole = pivot(-0.12, 0.45, -0.3);
     torso.add(pole);
-    pole.add(C(0.012, 0.9, md, { y: 0.35 }, 4));
+    pole.add(Cy(0.01, 0.012, 0.9, md, { y: 0.35 }, 5));
     cape = pivot(0, 0.75, 0);
     pole.add(cape);
-    cape.add(B(0.02, 0.26, 0.36, stdMat(c2, { side: THREE.DoubleSide }), { y: -0.13, z: -0.18 }));
+    cape.add(T(0.02, 0.36, 0.02, 0.3, 0.26, stdMat(c2), { y: -0.13, z: -0.17 }));
   } else if (markV === 2) {
     torso.add(B(0.07, 0.56, 0.3, m2, { y: 0.24, rz: 0.75, z: 0.01 }));
   }
 
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  consolidate(root);
   return {
     root, body, hips, torso, head, aim,
     legL: L.leg, legR: R.leg, shinL: L.shin, shinR: R.shin,
@@ -313,15 +336,67 @@ export function buildWeapon(id) {
   muzzle.position.set(0, 0.02, mz);
   g.add(muzzle);
   g.userData.muzzle = muzzle;
+  const GRIPS = {
+    ar7: [0.0, 0.26], sg12: [-0.02, 0.4], smg9: [0.0, 0.2], dmr4: [0.0, 0.3], pl2: [0.0, 0.3], arc3: [0.0, 0.26], lb1: [0.0, 0.3],
+    mg43: [0.0, 0.32], rl8: [0.05, 0.3], rg1: [0.0, 0.28], fl3: [0.0, 0.14], gl6: [0.0, 0.24],
+  };
+  const pistol = W.slot === 'secondary';
+  const gp = GRIPS[id] || [0, 0.25];
+  g.userData.grip = new THREE.Vector3(0, -0.08, gp[0]);
+  g.userData.fore = pistol ? new THREE.Vector3(-0.045, -0.1, 0.0) : new THREE.Vector3(0, -0.05, gp[1]);
+  g.userData.pistol = pistol;
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
+}
+
+// IK de dois ossos para os braços (alvo no espaço do pivô de mira)
+const DOWN = new THREE.Vector3(0, -1, 0);
+export function solveArm(arm, target, pole, L1 = 0.3, L2 = 0.32) {
+  const S = arm.position;
+  const toT = target.clone().sub(S);
+  let d = toT.length();
+  d = Math.min(Math.max(d, Math.abs(L1 - L2) + 0.02), (L1 + L2) * 0.995);
+  const x = toT.normalize();
+  const cosA = (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d);
+  const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
+  const y = pole.clone().sub(x.clone().multiplyScalar(pole.dot(x))).normalize();
+  const u = x.clone().multiplyScalar(Math.cos(a)).add(y.multiplyScalar(Math.sin(a))).normalize();
+  const E = S.clone().addScaledVector(u, L1);
+  const f = S.clone().addScaledVector(x, d).sub(E).normalize();
+  const qArm = new THREE.Quaternion().setFromUnitVectors(DOWN, u);
+  const fLocal = f.applyQuaternion(qArm.clone().invert());
+  const qFore = new THREE.Quaternion().setFromUnitVectors(DOWN, fLocal);
+  return { qArm, qFore };
+}
+
+const POLE_R = new THREE.Vector3(0.7, -1, -0.4);
+const POLE_L = new THREE.Vector3(-0.6, -1, -0.1);
+export function gripPose(model, weapon) {
+  const mount = model.weaponMount;
+  const s = mount.scale.x;
+  const toAim = (v) => v.clone().multiplyScalar(s).add(mount.position);
+  const grip = toAim(weapon ? weapon.userData.grip : new THREE.Vector3(0, -0.08, 0));
+  const fore = toAim(weapon ? weapon.userData.fore : new THREE.Vector3(0, -0.05, 0.25));
+  const reload = grip.clone().add(new THREE.Vector3(-0.08, -0.14, 0.12));
+  return {
+    R: solveArm(model.armR, grip, POLE_R),
+    L: solveArm(model.armL, fore, POLE_L),
+    LR: solveArm(model.armL, reload, POLE_L),
+  };
+}
+export function applyPose(model, ik, reloading = false) {
+  model.armR.quaternion.copy(ik.R.qArm);
+  model.foreR.quaternion.copy(ik.R.qFore);
+  const L = reloading ? ik.LR : ik.L;
+  model.armL.quaternion.copy(L.qArm);
+  model.foreL.quaternion.copy(L.qFore);
 }
 
 // =====================================================================
 // INIMIGOS
 // =====================================================================
 const VORR = { shell: '#c2461f', shell2: '#8a2a14', under: '#3a1a14', glow: '#ffb347', sac: '#c6ff3a', bone: '#f0d8a8' };
-const FERRO = { steel: '#5d636e', steel2: '#3e434c', dark: '#22252b', red: '#ff2a2a', orange: '#ff8a2a' };
+const FERRO = { steel: '#8a909c', steel2: '#5a606c', dark: '#30343c', red: '#ff2a2a', orange: '#ff8a2a' };
 const ECOS = { robe: '#2a1a40', robe2: '#1a1028', bone: '#ddd4f2', cyan: '#7ff3ff', violet: '#c06bff' };
 
 function insectLegs(parent, { count, spread, len1, len2, r, mat, y = 0, scale = 1, out = 2.0 }) {
@@ -333,11 +408,12 @@ function insectLegs(parent, { count, spread, len1, len2, r, mat, y = 0, scale = 
       const hip = pivot(side * 0.4 * scale, y, z);
       hip.rotation.z = side * out;
       parent.add(hip);
-      hip.add(C(r, len1, mat, { y: -len1 / 2 }, 5));
+      hip.add(Cy(r * 1.15, r * 0.8, len1, mat, { y: -len1 / 2 }, 5));
       const knee = pivot(0, -len1, 0);
       knee.rotation.z = -side * (out - 0.3);
       hip.add(knee);
-      knee.add(C(r * 0.75, len2, mat, { y: -len2 / 2 }, 5));
+      knee.add(S(r * 1.1, mat, {}));
+      knee.add(Cy(r * 0.8, r * 0.35, len2, mat, { y: -len2 / 2 }, 5));
       knee.add(K(r * 0.8, len2 * 0.25, mat, { y: -len2 - len2 * 0.1, rx: Math.PI }, 4));
       legs.push({ hip, knee, side, phase: (i % 2 === 0 ? 0 : Math.PI) + (side > 0 ? Math.PI : 0), baseZ: hip.rotation.z, baseK: knee.rotation.z });
     }
@@ -354,17 +430,19 @@ function biped(root, { scale = 1, torsoMat, limbMat, jointMat, headFn, torsoSize
   for (const side of [-1, 1]) {
     const leg = pivot(side * 0.12 * s, 0, 0);
     hips.add(leg);
-    leg.add(C(limbR * s, legLen * s, limbMat, { y: -legLen * s / 2 }, 5));
+    leg.add(Cy(limbR * 1.25 * s, limbR * 0.85 * s, legLen * s, limbMat, { y: -legLen * s / 2 }, 6));
     leg.add(S(limbR * 1.6 * s, jointMat, { y: -legLen * s }));
     const shin = pivot(0, -legLen * s, 0);
     leg.add(shin);
-    shin.add(C(limbR * 0.9 * s, legLen * s, limbMat, { y: -legLen * s / 2 }, 5));
-    shin.add(B(0.14 * s, 0.07 * s, 0.26 * s, jointMat, { y: -legLen * s, z: 0.05 * s }));
+    shin.add(Cy(limbR * 1.0 * s, limbR * 0.75 * s, legLen * s, limbMat, { y: -legLen * s / 2 }, 6));
+    shin.add(T(0.06 * s, 0.1 * s, 0.1 * s, 0.14 * s, legLen * 0.5 * s, torsoMat, { y: -legLen * 0.35 * s, z: limbR * 0.9 * s }));
+    shin.add(T(0.16 * s, 0.28 * s, 0.11 * s, 0.16 * s, 0.08 * s, jointMat, { y: -legLen * s, z: 0.05 * s }));
     legs.push({ leg, shin, side });
   }
   const torso = pivot(0, 0.06 * s, 0);
   hips.add(torso);
-  torso.add(B(torsoSize[0] * s, torsoSize[1] * s, torsoSize[2] * s, torsoMat, { y: torsoSize[1] * s / 2 + 0.05 * s }));
+  torso.add(T(torsoSize[0] * 0.7 * s, torsoSize[2] * 0.8 * s, torsoSize[0] * s, torsoSize[2] * s, torsoSize[1] * s, torsoMat, { y: torsoSize[1] * s / 2 + 0.05 * s }));
+  torso.add(Cy(torsoSize[0] * 0.3 * s, torsoSize[0] * 0.36 * s, 0.1 * s, jointMat, { y: 0.03 * s }, 8));
   const head = pivot(0, torsoSize[1] * s + 0.12 * s, 0);
   torso.add(head);
   if (headFn) headFn(head, s);
@@ -373,10 +451,11 @@ function biped(root, { scale = 1, torsoMat, limbMat, jointMat, headFn, torsoSize
     const arm = pivot(side * (torsoSize[0] / 2 + 0.06) * s, torsoSize[1] * s - 0.02 * s, 0);
     torso.add(arm);
     arm.add(S(limbR * 1.7 * s, jointMat));
-    arm.add(C(limbR * 0.9 * s, armLen * s, limbMat, { y: -armLen * s / 2 }, 5));
+    arm.add(Cy(limbR * 1.0 * s, limbR * 0.75 * s, armLen * s, limbMat, { y: -armLen * s / 2 }, 6));
+    arm.add(Sp(limbR * 2.2 * s, torsoMat, { y: 0.01 * s, sy: 0.6, rz: -side * 0.4 }, 6, 4));
     const fore = pivot(0, -armLen * s, 0);
     arm.add(fore);
-    fore.add(C(limbR * 0.8 * s, armLen * s, limbMat, { y: -armLen * s / 2 }, 5));
+    fore.add(Cy(limbR * 0.85 * s, limbR * 1.1 * s, armLen * s, limbMat, { y: -armLen * s / 2 }, 6));
     arms.push({ arm, fore, side });
   }
   return { hips, torso, head, legs, arms };
@@ -512,7 +591,7 @@ export function buildEnemy(type) {
 
     // ------------------------------------------------ FERRO
     case 'ferro_drone': {
-      const steel = sm(FERRO.steel, { metal: 0.7, rough: 0.35 }), dark = sm(FERRO.dark, { metal: 0.6 });
+      const steel = sm(FERRO.steel, { metal: 0.45, rough: 0.4 }), dark = sm(FERRO.dark, { metal: 0.6 });
       const body = pivot(0, 0, 0);
       root.add(body);
       body.add(S(0.45, steel, {}, 1));
@@ -532,7 +611,7 @@ export function buildEnemy(type) {
       break;
     }
     case 'ferro_trooper': {
-      const steel = sm(FERRO.steel, { metal: 0.65, rough: 0.4 }), steel2 = sm(FERRO.steel2, { metal: 0.6 }), dark = sm(FERRO.dark);
+      const steel = sm(FERRO.steel, { metal: 0.45, rough: 0.45 }), steel2 = sm(FERRO.steel2, { metal: 0.4, rough: 0.5 }), dark = sm(FERRO.dark);
       const red = glowMat(FERRO.red, 2.0);
       const b = biped(root, {
         torsoMat: steel, limbMat: steel2, jointMat: dark,
@@ -557,7 +636,7 @@ export function buildEnemy(type) {
     case 'ferro_titan': {
       const boss = type === 'ferro_titan';
       const s = boss ? 2.8 : 1.3;
-      const steel = sm(FERRO.steel, { metal: 0.65, rough: 0.4 }), steel2 = sm(FERRO.steel2, { metal: 0.6 }), dark = sm(FERRO.dark);
+      const steel = sm(FERRO.steel, { metal: 0.45, rough: 0.45 }), steel2 = sm(FERRO.steel2, { metal: 0.4, rough: 0.5 }), dark = sm(FERRO.dark);
       const red = glowMat(FERRO.red, 2.0), orange = glowMat(FERRO.orange, 2);
       const b = biped(root, {
         scale: s, torsoMat: steel, limbMat: steel2, jointMat: dark, torsoSize: [0.7, 0.6, 0.48], legLen: 0.5, armLen: 0.34, limbR: 0.09,
@@ -584,16 +663,17 @@ export function buildEnemy(type) {
       break;
     }
     case 'ferro_walker': {
-      const steel = sm(FERRO.steel, { metal: 0.65, rough: 0.4 }), steel2 = sm(FERRO.steel2, { metal: 0.6 }), dark = sm(FERRO.dark);
+      const steel = sm(FERRO.steel, { metal: 0.45, rough: 0.45 }), steel2 = sm(FERRO.steel2, { metal: 0.4, rough: 0.5 }), dark = sm(FERRO.dark);
       const red = glowMat(FERRO.red, 2.0), orange = glowMat(FERRO.orange, 2.2);
       const body = pivot(0, 3.2, 0);
       root.add(body);
-      body.add(B(3.0, 1.3, 4.0, steel));
-      body.add(B(2.6, 0.4, 3.4, steel2, { y: 0.8 }));
+      body.add(T(2.4, 3.2, 3.0, 4.0, 1.3, steel));
+      body.add(T(2.7, 3.5, 2.2, 2.8, 0.45, steel2, { y: 0.85 }));
+      body.add(T(2.0, 2.6, 2.6, 3.4, 0.5, steel2, { y: -0.85 }));
       body.add(B(1.4, 0.5, 0.6, orange, { y: 0.2, z: -2.0 }));
       const turret = pivot(0, 1.25, 0.2);
       body.add(turret);
-      turret.add(B(1.6, 0.8, 1.8, steel2));
+      turret.add(T(1.7, 1.9, 1.2, 1.4, 0.8, steel2));
       turret.add(C(0.18, 2.6, dark, { y: 0.05, z: 1.9, rx: Math.PI / 2 }, 7));
       turret.add(B(0.6, 0.12, 0.08, red, { y: 0.15, z: 0.92 }));
       parts.head = turret;
@@ -602,19 +682,20 @@ export function buildEnemy(type) {
         const hip = pivot(x * 1.5, -0.2, z * 1.6);
         body.add(hip);
         hip.rotation.z = x * 1.1;
-        hip.add(B(0.35, 2.0, 0.45, steel2, { y: -1.0 }));
+        hip.add(T(0.3, 0.38, 0.45, 0.55, 2.0, steel2, { y: -1.0 }));
         const knee = pivot(0, -2.0, 0);
         hip.add(knee);
         knee.rotation.z = -x * 1.1;
-        knee.add(B(0.3, 2.6, 0.4, steel, { y: -1.3 }));
-        knee.add(B(0.6, 0.2, 0.7, dark, { y: -2.6 }));
+        knee.add(S(0.32, dark, {}));
+        knee.add(T(0.22, 0.28, 0.38, 0.46, 2.6, steel, { y: -1.3 }));
+        knee.add(T(0.8, 0.9, 0.4, 0.5, 0.3, dark, { y: -2.6 }));
         legs.push({ hip, knee, side: x, phase: ph, baseZ: hip.rotation.z, baseK: knee.rotation.z });
       }
       Object.assign(parts, { anim: 'insect', legs, body, gait: 3 });
       break;
     }
     case 'ferro_factory': {
-      const steel = sm(FERRO.steel, { metal: 0.6, rough: 0.5 }), steel2 = sm(FERRO.steel2, { metal: 0.5 }), dark = sm(FERRO.dark);
+      const steel = sm(FERRO.steel, { metal: 0.4, rough: 0.5 }), steel2 = sm(FERRO.steel2, { metal: 0.35, rough: 0.55 }), dark = sm(FERRO.dark);
       const red = glowMat(FERRO.red, 2.0), orange = glowMat(FERRO.orange, 2);
       root.add(B(8, 4.5, 8, steel, { y: 2.25 }));
       root.add(B(8.4, 0.5, 8.4, steel2, { y: 4.6 }));
@@ -767,7 +848,10 @@ export function buildEnemy(type) {
       root.add(B(1, 1, 1, sm('#ff00ff'), { y: 0.5 }));
   }
 
-  // materiais próprios para piscar ao levar dano
+  // poucas malhas por pivô + materiais próprios para piscar ao levar dano
+  const keep = new Set([...parts.spin, ...parts.pulse]);
+  for (const o of keep) o.userData.keep = true;
+  consolidate(root);
   const clones = new Map();
   root.traverse((o) => {
     if (!o.isMesh) return;

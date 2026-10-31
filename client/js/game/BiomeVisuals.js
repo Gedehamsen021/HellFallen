@@ -99,7 +99,8 @@ export const BIOME_VIS = {
     ],
     clouds: null,
     weather: 'dust',
-    ambient: 0.5,
+    ambient: 0.9,
+    hemiSky: '#8a90a8',
     noNight: true,
   },
 };

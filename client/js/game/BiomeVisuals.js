@@ -1,0 +1,113 @@
+// Visual de cada bioma: paleta do terreno, rochas, céu, astros, clima
+export const BIOME_VIS = {
+  desert: {
+    ground: { low: '#b06a3a', mid: '#d99a5b', high: '#c98552', peak: '#8a5236', slope: '#9a5636', shore: '#e6bf86', detail: '#c2804a' },
+    rock: '#a8653f', rock2: '#7e4a33', stone: '#c9a87a',
+    liquid: null,
+    sky: { top: '#2f6fc4', horizon: '#f7c48c', bottom: '#d9a170', sun: '#fff0cc', fog: '#e8b98a' },
+    fog: [70, 520],
+    celestial: [
+      { kind: 'planet', color: '#c97a4a', color2: '#8a4a2a', size: 160, dir: [-0.6, 0.35, -0.7], ring: '#e8c9a0' },
+      { kind: 'sun', color: '#ffd9a0', size: 18, dir: [0.75, 0.25, -0.6] },
+    ],
+    clouds: { color: '#fff1de', count: 18, opacity: 0.85 },
+    weather: 'sand',
+    ambient: 0.55,
+  },
+  tundra: {
+    ground: { low: '#cfdbe6', mid: '#eef4fa', high: '#dbe6f0', peak: '#ffffff', slope: '#6f7f92', shore: '#b9c9d8', detail: '#c4d2df' },
+    rock: '#7a8696', rock2: '#5a6676', stone: '#9aa6b6',
+    liquid: { kind: 'ice', color: '#a8dcf5', opacity: 0.95 },
+    sky: { top: '#3b6aa8', horizon: '#cfe2f2', bottom: '#b8cadb', sun: '#f2f7ff', fog: '#c9d8e6' },
+    fog: [50, 430],
+    celestial: [
+      { kind: 'planet', color: '#7a9ad8', color2: '#4a6aa8', size: 200, dir: [0.5, 0.45, -0.75], ring: '#cfe0ff' },
+      { kind: 'moon', color: '#e8eef8', size: 30, dir: [-0.7, 0.55, 0.4] },
+    ],
+    clouds: { color: '#f4f8ff', count: 26, opacity: 0.9 },
+    aurora: true,
+    weather: 'snow',
+    ambient: 0.65,
+  },
+  jungle: {
+    ground: { low: '#2f5a2a', mid: '#3f7a32', high: '#4f8a3a', peak: '#6a7a5a', slope: '#4a3a2a', shore: '#5a6a3a', detail: '#356a2e' },
+    rock: '#5a6a5a', rock2: '#3e4a42', stone: '#7a8a6a',
+    liquid: { kind: 'toxic', color: '#7aff3a', opacity: 0.82 },
+    sky: { top: '#2a5a5a', horizon: '#a8d8a0', bottom: '#6a9a6a', sun: '#fff8d0', fog: '#8ab890' },
+    fog: [40, 380],
+    celestial: [
+      { kind: 'planet', color: '#5ad8a8', color2: '#2a8a6a', size: 230, dir: [-0.4, 0.5, -0.75], ring: null },
+      { kind: 'moon', color: '#ffd8a8', size: 40, dir: [0.6, 0.6, 0.5] },
+      { kind: 'moon', color: '#d8a8ff', size: 22, dir: [0.75, 0.42, 0.3] },
+    ],
+    clouds: { color: '#e8fff0', count: 30, opacity: 0.8 },
+    weather: 'spores',
+    ambient: 0.6,
+  },
+  volcanic: {
+    ground: { low: '#2a2224', mid: '#3a2e2e', high: '#4a3a36', peak: '#5a4a46', slope: '#1e1819', shore: '#5a2a1a', detail: '#332829' },
+    rock: '#3a3236', rock2: '#262022', stone: '#4a4042',
+    liquid: { kind: 'lava', color: '#ff5a10', opacity: 1 },
+    sky: { top: '#2a0e10', horizon: '#c8461e', bottom: '#5a1e12', sun: '#ffb07a', fog: '#6a2a1e' },
+    fog: [40, 360],
+    celestial: [
+      { kind: 'planet', color: '#ff7a3a', color2: '#8a2a10', size: 260, dir: [0.3, 0.4, -0.85], ring: '#ffb07a' },
+    ],
+    clouds: { color: '#3a2a2a', count: 24, opacity: 0.9 },
+    weather: 'ash',
+    ambient: 0.65,
+    noNight: true,
+  },
+  crystal: {
+    ground: { low: '#2a9a8a', mid: '#3ab89a', high: '#5ac8a8', peak: '#c8f0e8', slope: '#6a5a8a', shore: '#e8e0c8', detail: '#33a890' },
+    rock: '#8a7aa0', rock2: '#6a5a80', stone: '#b8a8d0',
+    liquid: { kind: 'water', color: '#3ac8ff', opacity: 0.78 },
+    sky: { top: '#3a2a7a', horizon: '#f0a8d8', bottom: '#a878c8', sun: '#fff0ff', fog: '#c8a0d8' },
+    fog: [60, 480],
+    celestial: [
+      { kind: 'planet', color: '#c87aff', color2: '#7a3ad8', size: 280, dir: [-0.5, 0.42, -0.75], ring: '#ffc8f0' },
+      { kind: 'moon', color: '#a8fff0', size: 34, dir: [0.7, 0.5, -0.3] },
+    ],
+    clouds: { color: '#ffe8fa', count: 22, opacity: 0.85 },
+    weather: 'motes',
+    ambient: 0.6,
+  },
+  ocean: {
+    ground: { low: '#e8d8a8', mid: '#5aa848', high: '#4a9040', peak: '#7a8a7a', slope: '#8a7a6a', shore: '#f4e8c0', detail: '#4f9a42' },
+    rock: '#9a948a', rock2: '#7a746a', stone: '#c8c0b0',
+    liquid: { kind: 'water', color: '#1ab8d8', opacity: 0.8 },
+    sky: { top: '#1e6ad8', horizon: '#bfe8ff', bottom: '#8ac8e8', sun: '#fffbe8', fog: '#a8d8f0' },
+    fog: [70, 520],
+    celestial: [
+      { kind: 'planet', color: '#f0e0c0', color2: '#c8a878', size: 190, dir: [0.6, 0.38, -0.7], ring: '#fff0d8' },
+      { kind: 'moon', color: '#ffffff', size: 26, dir: [-0.6, 0.6, -0.5] },
+    ],
+    clouds: { color: '#ffffff', count: 34, opacity: 0.92 },
+    weather: 'rain',
+    ambient: 0.6,
+  },
+  moon: {
+    ground: { low: '#6a6a72', mid: '#8a8a92', high: '#9a9aa2', peak: '#c0c0c8', slope: '#4a4a52', shore: '#7a7a82', detail: '#7f7f88' },
+    rock: '#8a8a90', rock2: '#5f5f66', stone: '#a0a0a8',
+    liquid: null,
+    sky: { top: '#020308', horizon: '#1a1e2e', bottom: '#2a2a32', sun: '#ffffff', fog: '#1e2230' },
+    fog: [90, 600],
+    stars: 1,
+    celestial: [
+      { kind: 'planet', color: '#3a7ad8', color2: '#2a9a5a', size: 340, dir: [-0.35, 0.45, -0.82], ring: null, atmo: '#7ac8ff' },
+      { kind: 'sun', color: '#ffffff', size: 14, dir: [0.7, 0.35, 0.6] },
+    ],
+    clouds: null,
+    weather: 'dust',
+    ambient: 0.5,
+    noNight: true,
+  },
+};
+
+// Variações de horário aplicadas sobre a paleta do bioma
+export const TIME_OF_DAY = {
+  dawn: { name: 'Amanhecer', sunElev: 0.16, horizonTint: '#ffb39a', horizonMix: 0.45, topTint: '#4a5a9a', topMix: 0.3, sunColor: '#ffc8a0', sunMul: 0.85, stars: 0.15, fogMul: 0.9 },
+  day: { name: 'Dia', sunElev: 0.62, horizonTint: '#ffffff', horizonMix: 0, topTint: '#ffffff', topMix: 0, sunColor: '#ffffff', sunMul: 1.0, stars: 0, fogMul: 1 },
+  dusk: { name: 'Crepúsculo', sunElev: 0.12, horizonTint: '#ff7a3d', horizonMix: 0.55, topTint: '#3a2a6a', topMix: 0.45, sunColor: '#ffa060', sunMul: 0.8, stars: 0.25, fogMul: 0.85 },
+  night: { name: 'Noite', sunElev: 0.5, horizonTint: '#24346a', horizonMix: 0.6, topTint: '#050816', topMix: 0.8, sunColor: '#a8c4ff', sunMul: 0.55, stars: 1, fogMul: 0.8, night: true },
+};

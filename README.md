@@ -4,7 +4,20 @@
 
 Você é um *Caído*, soldado de elite da Legião HellFallen, lançado em cápsulas do Bastião orbital para reconquistar planetas dominados por três facções inimigas. Jogue sozinho ou em esquadrões de até 4 jogadores, cumpra objetivos, chame ataques orbitais, sobreviva às ondas e extraia antes que seja tarde.
 
-## Como rodar
+## Jogar agora
+
+**▶ https://gedehamsen021.github.io/HellFallen/**
+
+No navegador, sem instalar nada (Chrome, Edge ou Firefox, com WebGL). No GitHub Pages o jogo roda no **modo convidado**: o progresso fica salvo no navegador. Para **contas com login** e **multiplayer**, o jogo precisa de um servidor (veja abaixo). Depois de hospedá-lo, informe o endereço na tela inicial, em *Servidor do jogo*, ou fixe-o em `config.js`.
+
+## Contas (registro e login)
+
+- Crie uma conta na tela inicial: usuário, senha e nome de guerra. Dá para levar o progresso de convidado para a conta.
+- O progresso (nível, créditos, arsenal, equipamento, pesquisa, configurações) é salvo no servidor automaticamente e fica disponível em qualquer navegador ou computador.
+- A sessão fica lembrada por 60 dias.
+- As senhas são guardadas com hash **scrypt** e salt, nunca em texto. Há limite de tentativas de login por IP.
+
+## Como rodar o servidor
 
 Requer [Node.js](https://nodejs.org) 18 ou superior.
 
@@ -17,6 +30,17 @@ npm start
 ```
 
 Abra **http://localhost:8080** no navegador (Chrome, Edge ou Firefox, com WebGL).
+
+### Hospedar o servidor na internet (grátis)
+
+O repositório já tem um blueprint do Render (`render.yaml`):
+
+1. Crie uma conta em [render.com](https://render.com) → **New → Blueprint** → escolha este repositório.
+2. Para as contas não sumirem quando o servidor grátis reiniciar, crie um banco Redis grátis em [upstash.com](https://upstash.com). No Render, preencha `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`. Sem elas, os dados ficam em `server/data/`, o que é ótimo para rodar no seu computador.
+3. Copie o endereço gerado (algo como `https://hellfallen.onrender.com`).
+4. Coloque esse endereço em `config.js` (`server: 'wss://hellfallen.onrender.com'`). O link do GitHub Pages passa a ter login e multiplayer para todo mundo.
+
+O próprio servidor também serve o jogo, então o endereço do Render funciona como link de jogo completo.
 
 ### Multiplayer
 
@@ -54,7 +78,7 @@ Sem servidor (ou se a conexão cair), o jogo funciona em **modo solo**, com a gu
 - Libertação por planeta: cada missão vencida avança a frente, e o inimigo recupera terreno com o tempo.
 - **Invasões**: as facções atacam planetas da Legião com um cronômetro; defenda ou perca o planeta.
 - **Ordens Supremas** globais com recompensa em créditos.
-- No servidor, a guerra é compartilhada por todos os jogadores e salva em `server/data/galaxy.json`.
+- No servidor, a guerra é compartilhada por todos os jogadores e fica salva (em `server/data/` ou no Upstash).
 
 ### Planetas e biomas
 Sete biomas com terreno procedural de 1,2 km × 1,2 km, céu, astros, nuvens, clima e horário (amanhecer, dia, crepúsculo, noite):
@@ -109,14 +133,18 @@ Toda missão tem postos avançados opcionais, amostras para coletar, depósitos 
 ## Estrutura do código
 
 ```
-server/index.js          servidor HTTP + WebSocket (esquadrões, missões, guerra galáctica)
+index.html, config.js    página do jogo e endereço do servidor
+server/index.js          servidor HTTP + WebSocket (contas, esquadrões, missões, guerra galáctica)
+server/accounts.js       registro, login, sessões e saves na nuvem
+server/store.js          armazenamento (arquivos JSON ou Upstash Redis)
+.github/workflows/       publicação automática no GitHub Pages
 shared/                  código usado pelo servidor e pelo navegador
   world.js               gerador de mundo determinístico (terreno, POIs, vegetação, colisão)
   galaxy.js              regras da guerra galáctica
   sim/MissionSim.js      simulação autoritativa da missão (IA, objetivos, chamados, extração)
   data/                  planetas, biomas, facções, inimigos, armas, chamados, perks, equipamento
 client/
-  index.html, css/       interface
+  css/                   interface
   js/Game.js             controlador principal
   js/galaxy/             mapa galáctico 3D
   js/game/               missão: terreno, céu, vegetação, efeitos, inimigos, jogador, entidades

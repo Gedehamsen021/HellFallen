@@ -80,16 +80,80 @@ export class UI {
 
   // =========================================================== TÍTULO
   showTitle() {
-    const g = this.game;
-    const p = g.profile;
-    const el = this.make('title-screen', `
+    this.make('title-screen', `
       <div class="logo">HELL<span>FALLEN</span></div>
       <div class="subtitle">Guerra Galáctica · Cooperativo até 4 jogadores</div>
-      <div class="panel title-box">
-        <label>Nome de guerra</label>
-        <input id="t-name" maxlength="20" value="${esc(p ? p.data.name : '')}" placeholder="Seu nome de Caído" />
-        <button class="btn primary big" id="t-play">${p ? 'CONTINUAR' : 'ALISTAR-SE'}</button>
-        <div class="net-status" id="t-net"></div>
+      <div class="panel title-box" id="auth-box"></div>
+      <div class="title-footer">HELLFALLEN · feito com Three.js · um jogo original</div>
+    `);
+    if (!this.titleTab) this.titleTab = this.game.net.hasServer || this.game.session ? 'login' : 'guest';
+    this.renderAuth();
+  }
+
+  renderAuth() {
+    const box = this.screen && this.screen.querySelector('#auth-box');
+    if (!box) return;
+    const g = this.game;
+    const keep = {};
+    box.querySelectorAll('input').forEach((i) => { keep[i.id] = i.type === 'checkbox' ? i.checked : i.value; });
+    const online = g.net.online;
+    const guest = this.guestProfile();
+    let html = '';
+    if (g.account) {
+      html = `
+        <div class="auth-who">Conectado como <b>${esc(g.account)}</b></div>
+        <div class="dim" style="font-size:14px">${g.profile ? `${esc(g.profile.data.name)} · nível ${g.profile.data.level} · ${g.profile.rank}` : ''}<br>Seu progresso é salvo na nuvem automaticamente.</div>
+        <button class="btn primary big" id="t-continue">CONTINUAR</button>
+        <button class="btn ghost" id="t-logout">SAIR DA CONTA</button>`;
+    } else if (g.session && online && !g.authError) {
+      html = `<div class="auth-who">Entrando como <b>${esc(g.session.user)}</b>…</div><div class="boot-bar" style="width:100%"><div></div></div>`;
+    } else {
+      const t = this.titleTab;
+      const noServer = !online;
+      html = `
+        <div class="auth-tabs">
+          <div class="atab ${t === 'login' ? 'active' : ''}" data-t="login">ENTRAR</div>
+          <div class="atab ${t === 'register' ? 'active' : ''}" data-t="register">CRIAR CONTA</div>
+          <div class="atab ${t === 'guest' ? 'active' : ''}" data-t="guest">CONVIDADO</div>
+        </div>`;
+      if (t === 'guest') {
+        html += `
+          <label>Nome de guerra</label>
+          <input id="t-name" maxlength="20" value="${esc(guest ? guest.name : '')}" placeholder="Seu nome de Caído" />
+          <button class="btn primary big" id="t-guest">${guest ? 'CONTINUAR' : 'JOGAR'}</button>
+          <div class="dim" style="font-size:13px">Como convidado, o progresso fica salvo só neste navegador${guest ? ` (nível ${guest.level})` : ''}. Crie uma conta para guardar na nuvem e jogar de qualquer lugar.</div>`;
+      } else if (noServer) {
+        html += `<div class="locked-note">Contas precisam de um servidor do jogo.<br>${g.net.hasServer ? 'Tentando conectar ao servidor…' : 'Nenhum servidor configurado — informe o endereço abaixo, ou jogue como convidado.'}</div>`;
+      } else if (t === 'login') {
+        html += `
+          <label>Usuário</label>
+          <input id="t-user" maxlength="16" autocomplete="username" placeholder="seu_usuario" />
+          <label>Senha</label>
+          <input id="t-pass" type="password" maxlength="128" autocomplete="current-password" placeholder="••••••" />
+          <button class="btn primary big" id="t-login" ${g.authBusy ? 'disabled' : ''}>${g.authBusy ? 'ENTRANDO…' : 'ENTRAR'}</button>`;
+      } else {
+        html += `
+          <label>Usuário <span class="dim">(3 a 16: letras, números, _)</span></label>
+          <input id="t-ruser" maxlength="16" autocomplete="username" placeholder="seu_usuario" />
+          <label>Senha <span class="dim">(mínimo 6)</span></label>
+          <input id="t-rpass" type="password" maxlength="128" autocomplete="new-password" />
+          <label>Confirmar senha</label>
+          <input id="t-rpass2" type="password" maxlength="128" autocomplete="new-password" />
+          <label>Nome de guerra <span class="dim">(aparece no jogo)</span></label>
+          <input id="t-rname" maxlength="20" placeholder="opcional" value="${esc(guest ? guest.name : '')}" />
+          ${guest ? `<label class="row" style="text-transform:none;letter-spacing:0;font-size:14px;color:var(--text)"><input type="checkbox" id="t-import" checked style="width:auto" /> Levar meu progresso de convidado (nível ${guest.level}) para a conta</label>` : ''}
+          <button class="btn primary big" id="t-register" ${g.authBusy ? 'disabled' : ''}>${g.authBusy ? 'CRIANDO…' : 'CRIAR CONTA'}</button>`;
+      }
+      if (g.authError) html += `<div class="auth-error">${esc(g.authError)}</div>`;
+    }
+    html += `
+      <div class="net-status" id="t-net"></div>
+      <details class="server-box" ${!online && !g.net.hasServer && this.titleTab !== 'guest' ? 'open' : ''}>
+        <summary>Servidor do jogo</summary>
+        <div class="row"><input id="t-server" placeholder="wss://seu-servidor.onrender.com" value="${esc(this.serverField ?? '')}" /><button class="btn small" id="t-connect">CONECTAR</button></div>
+        <div class="dim" style="font-size:12px">Deixe vazio para usar o padrão. O servidor guarda contas, esquadrões e a guerra galáctica compartilhada.</div>
+      </details>
+      <details class="server-box"><summary>Controles</summary>
         <div class="controls-hint">
           <b>WASD</b><span>mover · <b>Shift</b> correr · <b>Espaço</b> pular</span>
           <b>Mouse</b><span>mirar (botão direito) e atirar</span>
@@ -98,20 +162,72 @@ export class UI {
           <b>Z X C V</b><span>chamados orbitais (sinalizador)</span>
           <b>M</b><span>mapa · <b>B</b> marcar · <b>Enter</b> chat</span>
         </div>
-      </div>
-      <div class="title-footer">HELLFALLEN · feito com Three.js · um jogo original</div>
-    `);
-    const inp = el.querySelector('#t-name');
-    const go = () => {
-      const name = inp.value.trim().slice(0, 20) || 'Caído';
-      this.game.audio.unlock();
+      </details>`;
+    box.innerHTML = html;
+    for (const [id, v] of Object.entries(keep)) {
+      const i = box.querySelector('#' + id);
+      if (!i || id === 't-server') continue;
+      if (i.type === 'checkbox') i.checked = v; else if (v) i.value = v;
+    }
+    const srv = box.querySelector('#t-server');
+    if (srv && this.serverField === undefined) srv.value = this.currentServer();
+    const $ = (id) => box.querySelector('#' + id);
+    const enter = (inputs, fn) => inputs.forEach((id) => { const i = $(id); if (i) i.onkeydown = (e) => { if (e.key === 'Enter') fn(); }; });
+    box.querySelectorAll('.atab').forEach((tb) => tb.onclick = () => { this.click(); this.titleTab = tb.dataset.t; g.authError = ''; this.renderAuth(); });
+    const start = () => { this.game.audio.unlock(); this.click(); };
+    if ($('t-continue')) $('t-continue').onclick = () => { start(); g.startHub(); };
+    if ($('t-logout')) $('t-logout').onclick = () => { start(); g.logout(); };
+    if ($('t-guest')) {
+      const go = () => { start(); g.playAsGuest(($('t-name').value || '').trim().slice(0, 20) || 'Caído'); };
+      $('t-guest').onclick = go;
+      enter(['t-name'], go);
+    }
+    if ($('t-login')) {
+      const go = () => {
+        start();
+        const u = $('t-user').value.trim(), pw = $('t-pass').value;
+        if (!u || !pw) { g.authError = 'Preencha usuário e senha.'; this.renderAuth(); return; }
+        g.login(u, pw);
+      };
+      $('t-login').onclick = go;
+      enter(['t-user', 't-pass'], go);
+    }
+    if ($('t-register')) {
+      const go = () => {
+        start();
+        const u = $('t-ruser').value.trim(), pw = $('t-rpass').value, pw2 = $('t-rpass2').value;
+        const name = $('t-rname').value.trim().slice(0, 20);
+        if (!/^[a-zA-Z0-9_]{3,16}$/.test(u)) { g.authError = 'Usuário deve ter de 3 a 16 caracteres (letras, números ou _).'; this.renderAuth(); return; }
+        if (pw.length < 6) { g.authError = 'A senha precisa ter pelo menos 6 caracteres.'; this.renderAuth(); return; }
+        if (pw !== pw2) { g.authError = 'As senhas não conferem.'; this.renderAuth(); return; }
+        g.register(u, pw, name, !!($('t-import') && $('t-import').checked));
+      };
+      $('t-register').onclick = go;
+      enter(['t-ruser', 't-rpass', 't-rpass2', 't-rname'], go);
+    }
+    $('t-connect').onclick = () => {
       this.click();
-      this.game.startHub(name);
+      this.serverField = $('t-server').value.trim();
+      g.authError = '';
+      g.net.setServer(this.serverField);
+      this.toast(this.serverField ? 'Conectando ao servidor…' : 'Servidor padrão restaurado');
     };
-    el.querySelector('#t-play').onclick = go;
-    inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     this.updateNetStatus();
-    setTimeout(() => inp.focus(), 100);
+    const first = box.querySelector('input:not([type=checkbox]):not(#t-server)');
+    if (first && !first.value) setTimeout(() => first.focus(), 50);
+  }
+
+  currentServer() {
+    try { return localStorage.getItem('hellfallen.server') || (window.HELLFALLEN_CONFIG && window.HELLFALLEN_CONFIG.server) || ''; } catch { return ''; }
+  }
+
+  guestProfile() {
+    try {
+      const raw = localStorage.getItem('hellfallen.profile.v1');
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      return { name: d.name, level: d.level || 1 };
+    } catch { return null; }
   }
 
   updateNetStatus() {
@@ -119,7 +235,9 @@ export class UI {
     if (el) {
       el.innerHTML = this.game.net.online
         ? `Servidor: <b class="on">ONLINE</b> · ${this.game.online || 1} Caído(s) conectado(s)`
-        : `Servidor: <b class="off">OFFLINE</b> · modo solo (multiplayer requer <code>npm start</code>)`;
+        : this.game.net.hasServer
+          ? `Servidor: <b class="off">CONECTANDO…</b> · enquanto isso, dá para jogar como convidado`
+          : `Servidor: <b class="off">NENHUM</b> · modo solo (contas e multiplayer precisam de um servidor)`;
     }
     const pill = this.screen && this.screen.querySelector('.net-pill');
     if (pill) {
@@ -167,8 +285,10 @@ export class UI {
       </div>
       <div class="net-pill"></div>
       <div class="lvl">${d.level}</div>
-      <div><div class="name">${esc(d.name)}</div><div class="rank">${p.rank}</div><div class="bar xpbar"><div style="width:${Math.min(100, (d.xp / need) * 100)}%"></div></div></div>
+      <div><div class="name">${esc(d.name)}</div><div class="rank">${p.rank} · ${this.game.account ? '☁ ' + esc(this.game.account) : 'convidado'}</div><div class="bar xpbar"><div style="width:${Math.min(100, (d.xp / need) * 100)}%"></div></div></div>
+      <button class="btn small ghost" id="chip-exit" title="${this.game.account ? 'Sair da conta' : 'Voltar ao início'}">${this.game.account ? 'SAIR' : 'INÍCIO'}</button>
     `;
+    chip.querySelector('#chip-exit').onclick = () => { this.click(); if (this.game.account) this.game.logout(); else this.game.toTitle(); };
     this.updateNetStatus();
     const badge = this.screen?.querySelector('#sq-badge');
     if (badge) {

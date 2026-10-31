@@ -5,7 +5,8 @@ import { PERKS, perkSlots } from '../../../shared/data/perks.js';
 import { GEAR_PERKS, EXOTIC_MAP, RARITIES, rollGear, starterGear } from '../../../shared/data/gear.js';
 import { xpForLevel, MAX_LEVEL, RESEARCH, rankFor, DIFFICULTIES } from '../../../shared/data/progression.js';
 
-const KEY = 'hellfallen.profile.v1';
+export const GUEST_KEY = 'hellfallen.profile.v1';
+export const keyFor = (account) => (account ? 'hellfallen.profile.acc.' + account.toLowerCase() : GUEST_KEY);
 
 export const ARMOR_COLORS = ['#2b2f3a', '#e8e4d8', '#3a4a2a', '#5a2a22', '#1f3550', '#8a1f1f', '#d4a017', '#4a4a52', '#16161c', '#6b4a8a', '#2a6b6b', '#b05a1a', '#c8c8d0', '#203020'];
 export const VISOR_COLORS = ['#ffb000', '#3fd8ff', '#ff3b4e', '#4cff8a', '#c06bff', '#ffffff', '#ff7ad9'];
@@ -41,34 +42,45 @@ export function defaultProfile(name = 'Caído') {
 }
 
 export class Profile {
-  constructor(data) {
+  constructor(data, key = GUEST_KEY) {
     this.data = data;
+    this.key = key;
   }
 
-  static load() {
+  static normalize(d) {
+    const base = defaultProfile(d.name);
+    const merged = { ...base, ...d, owned: { ...base.owned, ...d.owned }, loadout: { ...base.loadout, ...d.loadout }, settings: { ...base.settings, ...d.settings }, stats: { ...base.stats, ...d.stats }, colors: { ...base.colors, ...d.colors } };
+    if (!Array.isArray(merged.inventory) || !merged.inventory.length) { merged.inventory = base.inventory; merged.equipped = base.equipped; }
+    return merged;
+  }
+
+  static load(key = GUEST_KEY) {
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const d = JSON.parse(raw);
-        const base = defaultProfile(d.name);
-        const merged = { ...base, ...d, owned: { ...base.owned, ...d.owned }, loadout: { ...base.loadout, ...d.loadout }, settings: { ...base.settings, ...d.settings }, stats: { ...base.stats, ...d.stats }, colors: { ...base.colors, ...d.colors } };
-        return new Profile(merged);
-      }
+      const raw = localStorage.getItem(key);
+      if (raw) return new Profile(Profile.normalize(JSON.parse(raw)), key);
     } catch (e) {
       console.warn('Perfil corrompido, criando novo', e);
     }
     return null;
   }
 
-  static create(name) {
-    const p = new Profile(defaultProfile(name));
+  static fromData(data, key) {
+    const p = new Profile(Profile.normalize(JSON.parse(JSON.stringify(data))), key);
+    p.grantFreeUnlocks();
+    return p;
+  }
+
+  static create(name, key = GUEST_KEY) {
+    const p = new Profile(defaultProfile(name), key);
     p.grantFreeUnlocks();
     p.save();
     return p;
   }
 
   save() {
-    try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch {}
+    this.data.savedAt = Date.now();
+    try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch {}
+    if (Profile.onSave) Profile.onSave(this);
   }
 
   get level() { return this.data.level; }

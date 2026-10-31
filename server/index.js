@@ -7,12 +7,15 @@ import { WebSocketServer } from 'ws';
 import { MissionSim, SIM_TICK, SNAP_EVERY } from '../shared/sim/MissionSim.js';
 import { createGalaxy, galaxyTick, galaxySummary, applyMissionResult, missionFaction, missionTypesFor } from '../shared/galaxy.js';
 import { PLANET_MAP } from '../shared/data/planets.js';
+import { createStore } from './store.js';
+import { Accounts } from './accounts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const PORT = +(process.env.PORT || 8080);
 const DATA_DIR = path.join(__dirname, 'data');
-const GALAXY_FILE = path.join(DATA_DIR, 'galaxy.json');
+const store = createStore(DATA_DIR);
+const accounts = new Accounts(store);
 
 // ------------------------------------------------------------------ HTTP estático
 const MIME = {
@@ -45,7 +48,8 @@ function serveFile(res, file) {
 const server = http.createServer((req, res) => {
   let url;
   try { url = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); res.end(); return; }
-  if (url === '/' || url === '/index.html') return serveFile(res, path.join(ROOT, 'client', 'index.html'));
+  if (url === '/' || url === '/index.html') return serveFile(res, path.join(ROOT, 'index.html'));
+  if (url === '/config.js') return serveFile(res, path.join(ROOT, 'config.js'));
   if (url === '/health') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, online: clients.size })); return; }
   for (const [prefix, dir] of MOUNTS) {
     if (url.startsWith(prefix)) {
@@ -59,22 +63,23 @@ const server = http.createServer((req, res) => {
 });
 
 // ------------------------------------------------------------------ Galáxia
-let galaxy;
-try {
-  galaxy = JSON.parse(fs.readFileSync(GALAXY_FILE, 'utf8'));
-  if (!galaxy.planets) throw new Error('invalid');
-  for (const id of Object.keys(PLANET_MAP)) if (!galaxy.planets[id]) throw new Error('outdated');
-} catch {
-  galaxy = createGalaxy();
-}
+let galaxy = createGalaxy();
 let galaxyDirty = true;
-function saveGalaxy() {
-  if (!galaxyDirty) return;
+async function loadGalaxy() {
   try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(GALAXY_FILE, JSON.stringify(galaxy));
-    galaxyDirty = false;
+    const g = await store.get('galaxy');
+    if (g && g.planets && Object.keys(PLANET_MAP).every((id) => g.planets[id])) galaxy = g;
   } catch (e) {
+    console.error('Falha ao carregar galáxia:', e.message);
+  }
+}
+async function saveGalaxy() {
+  if (!galaxyDirty) return;
+  galaxyDirty = false;
+  try {
+    await store.set('galaxy', galaxy);
+  } catch (e) {
+    galaxyDirty = true;
     console.error('Falha ao salvar galáxia:', e.message);
   }
 }
@@ -232,10 +237,27 @@ function finishMission(sq) {
 }
 
 // ------------------------------------------------------------------ WebSocket
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 512 * 1024 });
 
-wss.on('connection', (ws) => {
-  const c = { id: 'p' + nextClientId++, ws, name: 'Caído', level: 1, look: {}, squad: null, mods: {}, alive: true };
+async function handleAuth(c, msg) {
+  let r;
+  try {
+    if (msg.t === 'auth.register') r = await accounts.register(msg.user, msg.pass, msg.profile, c.ip);
+    else if (msg.t === 'auth.login') r = await accounts.login(msg.user, msg.pass, c.ip);
+    else r = await accounts.resume(msg.token);
+  } catch (e) {
+    console.error('auth', e);
+    r = { error: 'Erro no servidor de contas.' };
+  }
+  if (r.error) { send(c, { t: 'auth.error', text: r.error, resume: msg.t === 'auth.resume' }); return; }
+  c.account = r.user;
+  send(c, { t: 'auth.ok', user: r.user, token: r.token, profile: r.profile, created: !!r.created, resumed: !!r.resumed });
+  console.log(`[conta] ${r.user} ${r.created ? 'criou a conta' : r.resumed ? 'retomou a sessão' : 'entrou'}`);
+}
+
+wss.on('connection', (ws, req) => {
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const c = { id: 'p' + nextClientId++, ws, ip, name: 'Caído', level: 1, look: {}, squad: null, mods: {}, alive: true, account: null };
   clients.set(c.id, c);
 
   ws.on('pong', () => { c.alive = true; });
@@ -252,6 +274,20 @@ wss.on('connection', (ws) => {
         c.mods = typeof msg.mods === 'object' && msg.mods ? msg.mods : {};
         send(c, { t: 'welcome', id: c.id });
         send(c, galaxyMessage());
+        break;
+      case 'auth.register':
+      case 'auth.login':
+      case 'auth.resume':
+        handleAuth(c, msg);
+        break;
+      case 'auth.logout':
+        accounts.logout(msg.token);
+        c.account = null;
+        break;
+      case 'profile.save':
+        if (c.account && msg.profile) {
+          accounts.saveProfile(c.account, msg.profile).then((ok) => send(c, { t: 'profile.saved', ok })).catch(() => send(c, { t: 'profile.saved', ok: false }));
+        }
         break;
       case 'profile':
         if (msg.name) c.name = sanitize(msg.name) || c.name;
@@ -362,9 +398,12 @@ setInterval(() => {
   }
 }, 20000);
 
-process.on('SIGINT', () => { saveGalaxy(); process.exit(0); });
-process.on('SIGTERM', () => { saveGalaxy(); process.exit(0); });
+const shutdown = async () => { galaxyDirty = true; await saveGalaxy(); process.exit(0); };
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
-server.listen(PORT, () => {
-  console.log(`\n  HELLFALLEN — servidor no ar em http://localhost:${PORT}\n`);
+loadGalaxy().then(() => {
+  server.listen(PORT, () => {
+    console.log(`\n  HELLFALLEN — servidor no ar em http://localhost:${PORT} (dados: ${store.kind})\n`);
+  });
 });

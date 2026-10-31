@@ -1,0 +1,17 @@
+# Blueprint do Render (render.com) para hospedar o servidor do jogo:
+# contas, multiplayer e guerra galáctica compartilhada.
+# Para os dados sobreviverem a reinícios no plano grátis, crie um banco Redis
+# grátis no Upstash (upstash.com) e preencha as duas variáveis abaixo.
+services:
+  - type: web
+    name: hellfallen
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false

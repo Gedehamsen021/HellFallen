@@ -1,4 +1,28 @@
-// Cliente WebSocket com reconexão automática
+// Cliente WebSocket com reconexão automática e servidor configurável
+const SERVER_KEY = 'hellfallen.server';
+
+export function configuredServer() {
+  try {
+    const saved = localStorage.getItem(SERVER_KEY);
+    if (saved) return saved;
+  } catch {}
+  return (window.HELLFALLEN_CONFIG && window.HELLFALLEN_CONFIG.server) || '';
+}
+
+export function serverUrl() {
+  let custom = configuredServer().trim();
+  if (custom) {
+    if (/^https?:\/\//.test(custom)) custom = custom.replace(/^http/, 'ws');
+    if (!/^wss?:\/\//.test(custom)) custom = (location.protocol === 'https:' ? 'wss://' : 'ws://') + custom;
+    custom = custom.replace(/\/+$/, '');
+    if (!custom.endsWith('/ws')) custom += '/ws';
+    return custom;
+  }
+  // hospedagem estática (GitHub Pages ou arquivo local) não tem servidor de jogo
+  if (location.protocol === 'file:' || location.hostname.endsWith('github.io')) return null;
+  return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+}
+
 export class Net {
   constructor() {
     this.ws = null;
@@ -7,7 +31,8 @@ export class Net {
     this.handlers = new Map();
     this.helloData = null;
     this.retry = 0;
-    this.closedByUser = false;
+    this.gen = 0;
+    this.url = null;
   }
 
   on(type, fn) {
@@ -21,47 +46,77 @@ export class Net {
     if (set) for (const fn of [...set]) fn(msg);
   }
 
+  get hasServer() { return !!this.url; }
+
+  setServer(addr) {
+    try {
+      if (addr) localStorage.setItem(SERVER_KEY, addr.trim());
+      else localStorage.removeItem(SERVER_KEY);
+    } catch {}
+    this.reconnect();
+  }
+
+  reconnect() {
+    this.gen++;
+    this.retry = 0;
+    if (this.ws) {
+      const old = this.ws;
+      this.ws = null;
+      old.onclose = null;
+      try { old.close(); } catch {}
+    }
+    if (this.online) { this.online = false; this.id = null; this.emit('status', { online: false }); this.emit('disconnect', {}); }
+    this.connect(this.helloData);
+  }
+
   connect(helloData) {
     this.helloData = helloData;
-    if (location.protocol === 'file:') {
+    this.url = serverUrl();
+    const gen = this.gen;
+    if (!this.url) {
       this.emit('status', { online: false });
       return;
     }
-    const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    let ws;
     try {
-      this.ws = new WebSocket(url);
+      ws = new WebSocket(this.url);
     } catch {
-      this.scheduleRetry();
+      this.scheduleRetry(gen);
       return;
     }
-    this.ws.onopen = () => {
+    this.ws = ws;
+    ws.onopen = () => {
+      if (gen !== this.gen) return;
       this.online = true;
       this.retry = 0;
       this.send('hello', typeof this.helloData === 'function' ? this.helloData() : this.helloData);
       this.emit('status', { online: true });
     };
-    this.ws.onmessage = (e) => {
+    ws.onmessage = (e) => {
+      if (gen !== this.gen) return;
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.t === 'welcome') this.id = msg.id;
       this.emit(msg.t, msg);
     };
-    this.ws.onclose = () => {
+    ws.onclose = () => {
+      if (gen !== this.gen) return;
       const was = this.online;
       this.online = false;
       this.id = null;
       if (was) this.emit('status', { online: false });
+      else this.emit('status', { online: false, failed: true });
       this.emit('disconnect', {});
-      this.scheduleRetry();
+      this.scheduleRetry(gen);
     };
-    this.ws.onerror = () => {};
+    ws.onerror = () => {};
   }
 
-  scheduleRetry() {
-    if (this.closedByUser) return;
+  scheduleRetry(gen) {
+    if (gen !== this.gen) return;
     this.retry++;
     const delay = Math.min(15000, 2000 * this.retry);
-    setTimeout(() => this.connect(this.helloData), delay);
+    setTimeout(() => { if (gen === this.gen) this.connect(this.helloData); }, delay);
   }
 
   send(t, data = {}) {

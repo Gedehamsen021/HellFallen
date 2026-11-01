@@ -23,8 +23,16 @@ export class Input {
     });
     window.addEventListener('keyup', (e) => { this.keys.delete(e.code); });
     window.addEventListener('blur', () => { this.keys.clear(); this.mouse.clear(); });
+    this.fallback = false;
+    document.addEventListener('pointerlockerror', () => {
+      // navegador recusou capturar o mouse: joga mesmo assim, sem captura
+      this.fallback = true;
+      this.locked = true;
+      if (this.onLockChange) this.onLockChange(true);
+    });
     window.addEventListener('mousedown', (e) => {
       if (!this.locked) return;
+      if (this.fallback && e.target && e.target.closest && e.target.closest('button, input, select, .pause-menu')) return;
       this.mouse.add(e.button);
       this.mousePressed.add(e.button);
     });
@@ -40,6 +48,7 @@ export class Input {
     window.addEventListener('wheel', (e) => { if (this.locked) this.wheel += Math.sign(e.deltaY); }, { passive: true });
     window.addEventListener('contextmenu', (e) => { if (this.locked) e.preventDefault(); });
     document.addEventListener('pointerlockchange', () => {
+      this.fallback = false;
       this.locked = document.pointerLockElement === this.target;
       if (!this.locked) { this.mouse.clear(); this.keys.clear(); }
       if (this.onLockChange) this.onLockChange(this.locked);
@@ -53,13 +62,27 @@ export class Input {
 
   lock() {
     if (this.locked) return;
+    const fail = () => {
+      if (this.locked) return;
+      this.fallback = true;
+      this.locked = true;
+      if (this.onLockChange) this.onLockChange(true);
+    };
     try {
-      const p = this.target.requestPointerLock({ unadjustedMovement: false });
-      if (p && p.catch) p.catch(() => {});
-    } catch {}
+      if (!this.target.requestPointerLock) { fail(); return; }
+      const p = this.target.requestPointerLock();
+      if (p && p.catch) p.catch(fail);
+    } catch { fail(); }
   }
   unlock() {
     if (document.pointerLockElement) document.exitPointerLock();
+    if (this.fallback) {
+      this.fallback = false;
+      this.locked = false;
+      this.keys.clear();
+      this.mouse.clear();
+      if (this.onLockChange) this.onLockChange(false);
+    }
   }
 
   down(code) { return this.enabled && this.keys.has(code); }

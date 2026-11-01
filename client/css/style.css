@@ -387,3 +387,7 @@ input, select { font-family: var(--font); }
   .title-box { padding: 18px 24px; gap: 10px; }
   .title-box input { padding: 9px 12px; font-size: 17px; }
 }
+
+/* o HUD nunca deve interceptar cliques destinados ao jogo */
+#ui .screen.hud, #ui .screen.hud * { pointer-events: none; }
+#ui .screen.hud input, #ui .screen.hud .click-to-play { pointer-events: auto; cursor: pointer; }

@@ -164,7 +164,16 @@ export class Game {
     cv.addEventListener('pointerdown', (e) => {
       down = { x: e.clientX, y: e.clientY };
       this.audio.unlock();
-      if (this.state === 'mission' && this.mission && !this.ui.pauseOpen && !this.mission.ended) this.input.lock();
+    });
+    window.addEventListener('pointerdown', (e) => {
+      if (this.state !== 'mission' || !this.mission || this.ui.pauseOpen || this.mission.ended || this.input.locked) return;
+      if (e.target && e.target.closest && e.target.closest('button, input, select, a, .pause-menu')) return;
+      this.audio.unlock();
+      this.input.lock();
+    });
+    // Esc no modo sem captura de mouse abre o menu
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.input.fallback && this.state === 'mission') this.input.unlock();
     });
     cv.addEventListener('pointerup', (e) => {
       if (this.state === 'hub' && this.ui.tab === 'war' && down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6) {
